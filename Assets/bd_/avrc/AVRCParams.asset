@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf38a99e935d48cb95852aec727f26a6, type: 3}
+  m_Name: AVRCParams
+  m_EditorClassIdentifier: 
+  avrcParams:
+  - name: Hue
+    type: 2
+    timeoutSeconds: 0
+    rxName: RX_Hue
+    minVal: 0
+    maxVal: 1
+  - name: Ears
+    type: 0
+    timeoutSeconds: 0
+    rxName: RX_Ears
+    minVal: 0
+    maxVal: 1
+  - name: Book
+    type: 0
+    timeoutSeconds: 0
+    rxName: RX_Book
+    minVal: 0
+    maxVal: 0
+  - name: Glasses
+    type: 0
+    timeoutSeconds: 0
+    rxName: RX_Glasses
+    minVal: 0
+    maxVal: 0
+  baseOffset: {x: 18392, y: 15834, z: 0}
+  prefix: nirge_test

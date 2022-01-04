@@ -1,0 +1,10 @@
+*
+!*/
+
+!.gitignore
+!bd_.meta
+!bd_/avrc.meta
+!bd_/avrc/**
+
+bd_/avrc/Generated/**
+bd_/avrc/Generated.meta
