@@ -1,0 +1,5 @@
+﻿* Proximity sense objects aren't sensitive enough
+* Limit number of transmitted states for bidi/int variables
+* Experiment with float variable hold-down
+* Improve setup UI
+* Add prechecks before applying changes

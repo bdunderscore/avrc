@@ -12,8 +12,6 @@ namespace net.fushizen.avrc
     [SuppressMessage("ReSharper", "HeapView.BoxingAllocation")]
     internal class AvrcRxStateMachines : AvrcLayerSetupCommon
     {
-        private const float PROXIMITY_EPSILON = 1 - 0.01f;
-
         private AvrcRxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
             : base(avatarDescriptor, parameters)
         {
@@ -52,27 +50,6 @@ namespace net.fushizen.avrc
             return stateMachine;
         }
 
-        private VRCAvatarParameterDriver ParameterDriver(string paramName, int value, bool localOnly = true)
-        {
-            var driver = ScriptableObject.CreateInstance<VRCAvatarParameterDriver>();
-            driver.name = $"Driver_{paramName}_{value}";
-            driver.localOnly = localOnly;
-            driver.parameters = new List<VRC_AvatarParameterDriver.Parameter>()
-            {
-                new VRC_AvatarParameterDriver.Parameter()
-                {
-                    chance = 1,
-                    name = paramName,
-                    value = value,
-                    type = VRC_AvatarParameterDriver.ChangeType.Set,
-                }
-            };
-            
-            AssetDatabase.AddObjectToAsset(driver, m_animatorController);
-
-            return driver;
-        }
-
         protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
         {
             return BoolParamLayer(parameter, false);
@@ -90,7 +67,8 @@ namespace net.fushizen.avrc
             var conditionParamName = $"{parameter.name}_F";
             AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
-            
+            AddParameter(parameter.RxParameterName, AnimatorControllerParameterType.Bool);
+
             var s_false = stateMachine.AddState("False");
             s_false.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.RxParameterName, 0, localOnly: localOnly)};
             s_false.motion = AvrcAssets.EmptyClip();
@@ -121,22 +99,46 @@ namespace net.fushizen.avrc
             var stateMachine = new AnimatorStateMachine();
 
             var states = new AnimatorState[parameter.maxVal - parameter.minVal + 1];
-            var perState = 1.0f / states.Length;
+            var perState = 1.0f / (states.Length + 1);
 
             var conditionParamName = $"{parameter.name}_F";
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
+            AddParameter(parameter.RxParameterName, AnimatorControllerParameterType.Int);
             AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
+
+            var remoteDriven = new AnimatorState[states.Length];
 
             for (var i = 0; i < states.Length; i++)
             {
-                var hi = (i + 0.5f) * perState;
-                var lo = (i - 0.5f) * perState;
+                var hi = (i + 1.5f) * perState;
+                var lo = (i + 0.5f) * perState;
                 
-                states[i] = stateMachine.AddState($"{parameter.name}_{i}");
-                states[i].behaviours = new StateMachineBehaviour[] { ParameterDriver(parameter.RxParameterName, i) };
-                states[i].motion = AvrcAssets.EmptyClip();
+                states[i] = stateMachine.AddState($"Passive_{parameter.name}_{i}");
+                remoteDriven[i] = stateMachine.AddState($"RemoteDriven_{parameter.name}_{i}");
 
+                remoteDriven[i].behaviours = new StateMachineBehaviour[] { ParameterDriver(parameter.RxParameterName, i) };
+                states[i].motion = AvrcAssets.EmptyClip();
+                remoteDriven[i].motion = AvrcAssets.EmptyClip();
+
+                if (parameter.type == AvrcParameters.AvrcParameterType.BidiInt)
+                {
+                    states[i].motion = AvrcAnimations.Named(
+                        $"{Names.Prefix}_{parameter.name}_{i}_ACK",
+                        () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter) + "_ACK", m_parameters.baseOffset, perState * i)
+                    );
+                    remoteDriven[i].motion = states[i].motion;
+                }
+                
+                // When driven locally (only) skip the parameter driver
                 var transition = stateMachine.AddAnyStateTransition(states[i]);
+                transition.duration = 0;
+                transition.hasExitTime = false;
+                transition.AddCondition(AnimatorConditionMode.Equals, i + parameter.minVal, parameter.RxParameterName);
+                transition.AddCondition(AnimatorConditionMode.Less, perState / 2, conditionParamName);
+                transition.canTransitionToSelf = false;
+
+                // TODO - separate transitions for local and nonlocal
+                transition = stateMachine.AddAnyStateTransition(remoteDriven[i]);
                 transition.duration = 0;
                 transition.hasExitTime = false;
                 transition.AddCondition(AnimatorConditionMode.Greater, lo, conditionParamName);
@@ -147,7 +149,12 @@ namespace net.fushizen.avrc
 
             return stateMachine;
         }
-        
+
+        protected override AnimatorStateMachine BidiIntParamLayer(AvrcParameters.AvrcParameter parameter)
+        {
+            return IntParamLayer(parameter);
+        }
+
         protected override AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter)
         {
             // Float parameters are simply received directly; no special logic is required

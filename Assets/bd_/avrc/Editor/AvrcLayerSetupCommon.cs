@@ -5,11 +5,13 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDKBase;
 
 namespace net.fushizen.avrc
 {
     internal abstract class AvrcLayerSetupCommon
     {
+        protected const float PROXIMITY_EPSILON = 1 - 0.01f;
         protected readonly AvrcParameters m_parameters;
         protected readonly AnimatorController m_animatorController;
         protected readonly AvrcParameters.AvrcNames Names;
@@ -70,6 +72,9 @@ namespace net.fushizen.avrc
                     break;
                 case AvrcParameters.AvrcParameterType.AvrcIsLocal:
                     animatorStateMachine = IsLocalParamLayer(parameter);
+                    break;
+                case AvrcParameters.AvrcParameterType.BidiInt:
+                    animatorStateMachine = BidiIntParamLayer(parameter);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -151,6 +156,8 @@ namespace net.fushizen.avrc
         protected abstract AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter);
         protected abstract AnimatorStateMachine IntParamLayer(AvrcParameters.AvrcParameter parameter);
 
+        protected abstract AnimatorStateMachine BidiIntParamLayer(AvrcParameters.AvrcParameter parameter);
+
         protected void GarbageCollectAnimatorAsset()
         {
             var path = AssetDatabase.GetAssetPath(m_animatorController);
@@ -229,6 +236,27 @@ namespace net.fushizen.avrc
                     AssetDatabase.AddObjectToAsset(referenced, m_animatorController);
                 }
             }
+        }
+
+        protected VRCAvatarParameterDriver ParameterDriver(string paramName, int value, bool localOnly = true)
+        {
+            var driver = ScriptableObject.CreateInstance<VRCAvatarParameterDriver>();
+            driver.name = $"Driver_{paramName}_{value}";
+            driver.localOnly = localOnly;
+            driver.parameters = new List<VRC_AvatarParameterDriver.Parameter>()
+            {
+                new VRC_AvatarParameterDriver.Parameter()
+                {
+                    chance = 1,
+                    name = paramName,
+                    value = value,
+                    type = VRC_AvatarParameterDriver.ChangeType.Set,
+                }
+            };
+            
+            AssetDatabase.AddObjectToAsset(driver, m_animatorController);
+
+            return driver;
         }
     }
 }

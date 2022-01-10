@@ -1,6 +1,4 @@
-﻿using UnityEditor;
-using UnityEditor.VersionControl;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Animations;
 
 namespace net.fushizen.avrc
@@ -48,8 +46,8 @@ namespace net.fushizen.avrc
                 AnimationCurve.Constant(0, 1, 0));
             clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y", 
                 AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z", 
-                AnimationCurve.Constant(0, 1, AvrcObjects.RadiusScale * (1 - value)));
+            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
+                AnimationCurve.Constant(0, 1, AvrcObjects.RadiusScale * (baseOffset.z + Mathf.LerpUnclamped(1, 0.5f, value))));
 
             return clip;
         }

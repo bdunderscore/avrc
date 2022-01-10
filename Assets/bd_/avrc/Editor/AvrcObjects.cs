@@ -10,7 +10,7 @@ namespace net.fushizen.avrc
 {
     internal class AvrcObjects
     {
-        internal const float RadiusScale = 10f;
+        internal const float RadiusScale = 1f;
 
         internal static GameObject buildConstraintBase(GameObject parent, string name, AvrcParameters parameters)
         {
@@ -57,7 +57,7 @@ namespace net.fushizen.avrc
             trigger.radius = 0.5f * RadiusScale;
             trigger.shapeType = VRCAvatarTrigger.ShapeType.Sphere;
             trigger.allowSelf = false;
-            trigger.collisionMask = new List<string>(new[] {parameters.prefix + "_" + name});
+            trigger.collisionMask = new List<string>(new[] {$"{parameters.prefix}_{name}"});
             trigger.isReceiver = false;
 
             return obj;
@@ -82,19 +82,30 @@ namespace net.fushizen.avrc
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
                     break;
                 case AvrcParameters.AvrcParameterType.AvrcIsLocal:
-                    trigger.parameter = parameter.name + "_F";
+                    trigger.parameter = $"{parameter.name}_F";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Constant;
                     trigger.parameterValue = 1;
                     break;
                 case AvrcParameters.AvrcParameterType.AvrcLock:
                 case AvrcParameters.AvrcParameterType.Bool:
-                    trigger.parameter = parameter.name + "_F";
+                    trigger.parameter = $"{parameter.name}_F";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Constant;
                     trigger.parameterValue = 1;
                     break;
                 case AvrcParameters.AvrcParameterType.Int:
-                    trigger.parameter = parameter.name + "_F";
+                    trigger.parameter = $"{parameter.name}_F";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
+                    break;
+                case AvrcParameters.AvrcParameterType.BidiInt:
+                    trigger.parameter = $"{parameter.name}_F";
+                    trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
+                    trigger.position = new Vector3(-6, 0, 0);
+                    
+                    // Create ACK trigger
+                    triggerObj = createTrigger(parent, parameters, $"{parameter.name}_ACK", Vector3.zero);
+                    trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
+                    trigger.position = new Vector3(-6, 0, 0);
+                    trigger.isReceiver = false;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -134,9 +145,8 @@ namespace net.fushizen.avrc
             var rxPresent = createTrigger(obj, parameters, "$RXPresent", Vector3.zero);
             var trigger = rxPresent.GetComponent<VRCAvatarTrigger>();
             trigger.isReceiver = true;
-            trigger.receiverType = VRCAvatarTrigger.ReceiverType.Constant;
+            trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
             trigger.parameter = parameters.Names.ParamRxPresent;
-            trigger.parameterValue = 1;
 
             var txPresent = createTrigger(obj, parameters, "$TXPresent", Vector3.up);
             trigger = txPresent.GetComponent<VRCAvatarTrigger>();
@@ -144,7 +154,21 @@ namespace net.fushizen.avrc
 
             foreach (var param in parameters.avrcParams)
             {
-                createTrigger(obj, parameters, param.name, Vector3.zero);
+                var triggerObj = createTrigger(obj, parameters, param.name, Vector3.zero);
+
+                if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
+                {
+                    triggerObj.GetComponent<VRCAvatarTrigger>().position = new Vector3(-6, 0, 0);
+                    
+                    // Create ACK receiver
+                    triggerObj = createTrigger(obj, parameters, $"{param.name}_ACK", Vector3.zero);
+                    trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
+                    trigger.isReceiver = true;
+                    trigger.parameter = $"{param.name}_ACK";
+                    trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
+                    trigger.position = new Vector3(-6, 0, 0);
+                    break;
+                }
             }
 
             return obj;

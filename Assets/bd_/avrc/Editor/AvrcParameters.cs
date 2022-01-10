@@ -30,7 +30,8 @@ namespace net.fushizen.avrc
             Int,
             Float,
             AvrcLock,
-            AvrcIsLocal
+            AvrcIsLocal,
+            BidiInt
         }
         
         [Serializable]
@@ -42,7 +43,12 @@ namespace net.fushizen.avrc
             [CanBeNull] public string rxName;
             public int minVal, maxVal;
 
-            public string RxParameterName => rxName ?? name;
+            public string RxParameterName => !string.IsNullOrEmpty(rxName) ? rxName : name;
+
+            internal string TxParameterFlag(AvrcNames names)
+            {
+                return $"_AVRC_{names.Prefix}_tx_{name}";
+            }
         }
 
         internal struct AvrcNames
@@ -61,6 +67,7 @@ namespace net.fushizen.avrc
             
             internal string ParamRxPresent => $"_AVRC_{Prefix}_RxPresent";
             internal string ParamTxProximity => $"_AVRC_{Prefix}_TxProximity";
+            internal string ParamTxActive => $"_AVRC_{Prefix}_TxActive";
 
             internal string ParameterPath(AvrcParameter parameter)
             {
