@@ -11,7 +11,11 @@ namespace net.fushizen.avrc
 {
     internal abstract class AvrcLayerSetupCommon
     {
-        protected const float PROXIMITY_EPSILON = 1 - 0.01f;
+        protected const float EPSILON = 0.01f;
+        //protected const float PROXIMITY_EPSILON = 1 - EPSILON;
+        protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
+        protected const float MaxPresenceTestValue = AvrcObjects.PresenceTestValue + EPSILON;
+        
         protected readonly AvrcParameters m_parameters;
         protected readonly AnimatorController m_animatorController;
         protected readonly AvrcParameters.AvrcNames Names;
@@ -36,6 +40,13 @@ namespace net.fushizen.avrc
             }
         }
 
+        protected void AddPresenceCondition(AnimatorStateTransition t, string varName)
+        {
+            AddParameter(varName, AnimatorControllerParameterType.Float);
+            t.AddCondition(AnimatorConditionMode.Less, MaxPresenceTestValue, varName);
+            t.AddCondition(AnimatorConditionMode.Greater, MinPresenceTestValue, varName);
+        }
+        
         protected void AddParameter(string name, AnimatorControllerParameterType ty)
         {
             foreach (var param in m_animatorController.parameters)
@@ -186,7 +197,6 @@ namespace net.fushizen.avrc
             while (visitQueue.Count > 0)
             {
                 var serializedObject = visitQueue.Dequeue();
-                Debug.Log($"=== Visiting {serializedObject.targetObject.name} ===");
                 
                 var iterator = serializedObject.GetIterator();
                 while (iterator.Next(true))
@@ -209,7 +219,6 @@ namespace net.fushizen.avrc
                     if (serializedProperty.propertyType == SerializedPropertyType.ObjectReference)
                     {
                         var obj = serializedProperty.objectReferenceValue;
-                        Debug.Log($"Found reference: {(obj != null ? obj.name : "<null>")}");
                         if (obj != null && referencedAssets.Add(obj))
                         {
                             visitQueue.Enqueue(new SerializedObject(obj));
@@ -222,7 +231,6 @@ namespace net.fushizen.avrc
             {
                 if (asset != null && !referencedAssets.Contains(asset))
                 {
-                    Debug.Log($"Pruning unreferenced asset {asset.name}");
                     AssetDatabase.RemoveObjectFromAsset(asset);
                 }
             }
@@ -231,7 +239,6 @@ namespace net.fushizen.avrc
             {
                 if (AssetDatabase.GetAssetPath(referenced) == "")
                 {
-                    Debug.Log($"Adding sub-asset to controller asset: {referenced.GetType()}/{referenced.name}");
                     referenced.hideFlags = HideFlags.HideInHierarchy;
                     AssetDatabase.AddObjectToAsset(referenced, m_animatorController);
                 }

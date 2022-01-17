@@ -82,14 +82,14 @@ namespace net.fushizen.avrc
             t.hasExitTime = false;
             t.canTransitionToSelf = false;
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, conditionParamName);
-            t.AddCondition(AnimatorConditionMode.Greater, PROXIMITY_EPSILON, Names.ParamTxProximity);
+            AddPresenceCondition(t, Names.ParamTxProximity);
 
             t = stateMachine.AddAnyStateTransition(s_false);
             t.duration = 0;
             t.hasExitTime = false;
             t.canTransitionToSelf = false;
             t.AddCondition(AnimatorConditionMode.Less, 0.5f, conditionParamName);
-            t.AddCondition(AnimatorConditionMode.Greater, PROXIMITY_EPSILON, Names.ParamTxProximity);
+            AddPresenceCondition(t, Names.ParamTxProximity);
 
             return stateMachine;
         }
@@ -143,7 +143,7 @@ namespace net.fushizen.avrc
                 transition.hasExitTime = false;
                 transition.AddCondition(AnimatorConditionMode.Greater, lo, conditionParamName);
                 transition.AddCondition(AnimatorConditionMode.Less, hi, conditionParamName);
-                transition.AddCondition(AnimatorConditionMode.Greater, PROXIMITY_EPSILON, Names.ParamTxProximity);
+                AddPresenceCondition(transition, Names.ParamTxProximity);
                 transition.canTransitionToSelf = false;
             }
 

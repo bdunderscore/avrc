@@ -106,26 +106,32 @@ namespace net.fushizen.avrc
             t.hasExitTime = false;
             t.duration = 0;
             t.canTransitionToSelf = false;
-            t.AddCondition(AnimatorConditionMode.Less, 1 -  PROXIMITY_EPSILON, Names.ParamRxPresent);
+            // We use max value here (minus epsilon) because we are uninterested in whether communication is precise,
+            // just whether the TX is present here at all
+            t.AddCondition(AnimatorConditionMode.Greater, 1.0f - EPSILON, Names.ParamRxPresent);
             t.AddCondition(AnimatorConditionMode.Equals, 1, Names.ParamTxActive);
 
             t = timeout.AddTransition(entry);
             t.exitTime = 5;
             t.hasExitTime = true;
             t.duration = 0;
-
+            
             var rxPresentDelay = rootStateMachine.AddState("Delay");
             rxPresentDelay.motion = entry.motion;
             rxPresentDelay.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.ParamTxActive, 1, false)};
 
             t = AddInstantTransition(entry, rxPresentDelay);
-            t.AddCondition(AnimatorConditionMode.Greater, 1 -  PROXIMITY_EPSILON, Names.ParamRxPresent);
+            AddPresenceCondition(t, Names.ParamRxPresent);
 
             var rxPresent = rootStateMachine.AddState("RxPresent");
             rxPresent.motion = entry.motion;
 
             t = AddInstantTransition(rxPresentDelay, rxPresent);
             t.AddCondition(AnimatorConditionMode.Equals, 1, Names.ParamTxActive); // always true
+            
+            // Cancel timeout if we see the RX again
+            t = AddInstantTransition(timeout, rxPresent);
+            t.AddCondition(AnimatorConditionMode.Less, 1.0f - EPSILON, Names.ParamRxPresent);
 
             return rootStateMachine;
         }
@@ -323,36 +329,36 @@ namespace net.fushizen.avrc
                 var transition = AddInstantTransition(rx, passiveStates[i]);
                 transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
                 transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
-                AddRxPresentCondition(transition);
+                AddPresenceCondition(transition, Names.ParamRxPresent);
                 
                 // Exit from passive to rx when ack value changes
                 transition = AddInstantTransition(passiveStates[i], rx);
                 transition.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
                 transition.AddCondition(AnimatorConditionMode.Greater, rxRangeHi, ackParam);
-                AddRxPresentCondition(transition);
+                AddPresenceCondition(transition, Names.ParamRxPresent);
                 
                 transition = AddInstantTransition(passiveStates[i], rx);
                 transition.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
                 transition.AddCondition(AnimatorConditionMode.Less, rxRangeLow, ackParam);
-                AddRxPresentCondition(transition);
+                AddPresenceCondition(transition, Names.ParamRxPresent);
                 
                 // Start transmitting when: Local value changes, and remote has not changed
                 transition = AddInstantTransition(passiveStates[i], tx);
                 transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
                 transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
-                AddRxPresentCondition(transition);
+                AddPresenceCondition(transition, Names.ParamRxPresent);
                 transition.AddCondition(AnimatorConditionMode.NotEqual, i + lo, parameter.name);
                 
                 // TX to active transition
                 transition = AddInstantTransition(tx, activeStates[i]);
-                AddRxPresentCondition(transition);
+                AddPresenceCondition(transition, Names.ParamRxPresent);
                 transition.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
 
                 // Exit from active state when acknowledged
                 transition = AddInstantTransition(activeStates[i], passiveStates[i]);
                 transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
                 transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
-                AddRxPresentCondition(transition);
+                AddPresenceCondition(transition, Names.ParamRxPresent);
             }
 
             return stateMachine;
@@ -382,12 +388,5 @@ namespace net.fushizen.avrc
             AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
             transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
         }
-        
-        private void AddRxPresentCondition(AnimatorStateTransition transition)
-        {
-            AddParameter(Names.ParamRxPresent, AnimatorControllerParameterType.Float);
-            transition.AddCondition(AnimatorConditionMode.Greater, PROXIMITY_EPSILON, Names.ParamRxPresent);
-        }
-
     }
 }

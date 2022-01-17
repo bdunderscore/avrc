@@ -11,6 +11,7 @@ namespace net.fushizen.avrc
     internal class AvrcObjects
     {
         internal const float RadiusScale = 1f;
+        internal const float PresenceTestValue = 0.66f;
 
         internal static GameObject buildConstraintBase(GameObject parent, string name, AvrcParameters parameters)
         {
@@ -44,13 +45,13 @@ namespace net.fushizen.avrc
             return obj;
         }
 
-        internal static GameObject createTrigger(GameObject parent, AvrcParameters parameters, string name, Vector3 offset)
+        internal static GameObject createTrigger(GameObject parent, AvrcParameters parameters, string name, float staticValue = 2)
         {
             var obj = new GameObject(name);
             Undo.RegisterCreatedObjectUndo(obj, "AVRC setup");
 
             obj.transform.parent = parent.transform;
-            obj.transform.localPosition = offset * 2;
+       
             obj.transform.localRotation = Quaternion.identity;
             
             var trigger = Undo.AddComponent<VRCAvatarTrigger>(obj);
@@ -59,7 +60,12 @@ namespace net.fushizen.avrc
             trigger.allowSelf = false;
             trigger.collisionMask = new List<string>(new[] {$"{parameters.prefix}_{name}"});
             trigger.isReceiver = false;
-
+            
+            // One radius (RadiusScale * 0.5) away gives a distance of zero from the edge of the transmitter to the
+            // center of the receiver (received value 1). Two radiuses away is a maximum distance (1.0).
+            // At the default static value, we place the receiver at the local origin.
+            obj.transform.localPosition = Vector3.forward * trigger.radius * (2 - staticValue);
+            
             return obj;
         }
 
@@ -69,7 +75,7 @@ namespace net.fushizen.avrc
             AvrcParameters.AvrcParameter parameter
         )
         {
-            var triggerObj = createTrigger(parent, parameters, parameter.name, Vector3.zero);
+            var triggerObj = createTrigger(parent, parameters, parameter.name);
 
             var trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
             trigger.isReceiver = true;
@@ -99,12 +105,12 @@ namespace net.fushizen.avrc
                 case AvrcParameters.AvrcParameterType.BidiInt:
                     trigger.parameter = $"{parameter.name}_F";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
-                    trigger.position = new Vector3(-6, 0, 0);
+                    trigger.position = new Vector3(0, 0, 0);
                     
                     // Create ACK trigger
-                    triggerObj = createTrigger(parent, parameters, $"{parameter.name}_ACK", Vector3.zero);
+                    triggerObj = createTrigger(parent, parameters, $"{parameter.name}_ACK");
                     trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
-                    trigger.position = new Vector3(-6, 0, 0);
+                    trigger.position = new Vector3(0, 0, 0);
                     trigger.isReceiver = false;
                     break;
                 default:
@@ -118,10 +124,12 @@ namespace net.fushizen.avrc
             
             // This trigger acts as a signal to the transmitter that we are listening locally (and that the anti-culling
             // object should be activated).
-            createTrigger(obj, parameters, "$RXPresent", Vector3.zero);
+            // Note that RXPresent and TXPresent are offset from the base object, so that rotations affect them more
+            // strongly than the actual transmitted value.
+            createTrigger(obj, parameters, "$RXPresent", staticValue: PresenceTestValue);
             
             // This trigger is used as a sanity check to verify that we are properly aligned with the transmitter.
-            var rxPresent = createTrigger(obj, parameters, "$TXPresent", Vector3.up);
+            var rxPresent = createTrigger(obj, parameters, "$TXPresent");
             var trigger = rxPresent.GetComponent<VRCAvatarTrigger>();
             trigger.isReceiver = true;
             trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
@@ -142,31 +150,31 @@ namespace net.fushizen.avrc
         ) {
             var obj = buildConstraintBase(parent, name, parameters);
 
-            var rxPresent = createTrigger(obj, parameters, "$RXPresent", Vector3.zero);
+            var rxPresent = createTrigger(obj, parameters, "$RXPresent");
             var trigger = rxPresent.GetComponent<VRCAvatarTrigger>();
             trigger.isReceiver = true;
             trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
             trigger.parameter = parameters.Names.ParamRxPresent;
 
-            var txPresent = createTrigger(obj, parameters, "$TXPresent", Vector3.up);
+            var txPresent = createTrigger(obj, parameters, "$TXPresent", staticValue: PresenceTestValue);
             trigger = txPresent.GetComponent<VRCAvatarTrigger>();
             trigger.isReceiver = false;
 
             foreach (var param in parameters.avrcParams)
             {
-                var triggerObj = createTrigger(obj, parameters, param.name, Vector3.zero);
+                var triggerObj = createTrigger(obj, parameters, param.name);
 
                 if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
                 {
-                    triggerObj.GetComponent<VRCAvatarTrigger>().position = new Vector3(-6, 0, 0);
+                    triggerObj.GetComponent<VRCAvatarTrigger>().position = new Vector3(0, 0, 0);
                     
                     // Create ACK receiver
-                    triggerObj = createTrigger(obj, parameters, $"{param.name}_ACK", Vector3.zero);
+                    triggerObj = createTrigger(obj, parameters, $"{param.name}_ACK");
                     trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
                     trigger.isReceiver = true;
                     trigger.parameter = $"{param.name}_ACK";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
-                    trigger.position = new Vector3(-6, 0, 0);
+                    trigger.position = new Vector3(0, 0, 0);
                     break;
                 }
             }
