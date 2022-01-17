@@ -107,7 +107,7 @@ namespace net.fushizen.avrc
 
             var trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
             trigger.isReceiver = true;
-            triggerObj.SetActive(true);
+            triggerObj.SetActive(false);
 
             switch (parameter.type)
             {
@@ -137,6 +137,7 @@ namespace net.fushizen.avrc
                     
                     // Create ACK trigger
                     triggerObj = createTrigger(parent, parameters, $"{parameter.name}_ACK");
+                    triggerObj.SetActive(false);
                     trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
                     trigger.position = new Vector3(0, 0, 0);
                     trigger.isReceiver = false;
@@ -208,6 +209,7 @@ namespace net.fushizen.avrc
             foreach (var param in parameters.avrcParams)
             {
                 var triggerObj = createTrigger(obj, parameters, param.name);
+                triggerObj.SetActive(false);
 
                 if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
                 {
@@ -215,6 +217,7 @@ namespace net.fushizen.avrc
                     
                     // Create ACK receiver
                     triggerObj = createTrigger(obj, parameters, $"{param.name}_ACK");
+                    triggerObj.SetActive(false);
                     trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
                     trigger.isReceiver = true;
                     trigger.parameter = $"{param.name}_ACK";

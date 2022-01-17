@@ -60,6 +60,7 @@ namespace net.fushizen.avrc
         }
 
         internal static AnimationClip EnableConstraintClip(
+            AvrcParameters parameters,
             string path,
             LocalState local,
             string sendingSelfPresent,
@@ -90,7 +91,23 @@ namespace net.fushizen.avrc
                 clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.z",
                     AnimationCurve.Constant(0, 1, BOUNDS_SIZE));
             }
+            
+            foreach (var param in parameters.avrcParams)
+            {
+                int isActive = local != LocalState.Unknown ? 1 : 0;
+                
+                clip.SetCurve(
+                    parameters.Names.ParameterPath(param), typeof(GameObject), "m_IsActive",
+                    AnimationCurve.Constant(0, 1, isActive));
 
+                if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
+                {
+                    clip.SetCurve(
+                        parameters.Names.ParameterPath(param) + "_ACK", typeof(GameObject), "m_IsActive",
+                        AnimationCurve.Constant(0, 1, isActive));
+                }
+            }
+            
             return clip;
         }
 
@@ -105,25 +122,12 @@ namespace net.fushizen.avrc
         /// <returns></returns>
         internal static AnimationClip ReceiverPresentClip(AvrcParameters parameters, LocalState local)
         {
-            var clip = EnableConstraintClip(parameters.Names.ObjectPath, local, parameters.Names.ObjRxPresent, parameters.Names.ObjTxLocal);
-
-            foreach (var parameter in parameters.avrcParams)
-            {
-                var gameObjectName = parameters.Names.ParameterPath(parameter);
-                clip.SetCurve(gameObjectName, typeof(GameObject), "m_IsActive",
-                    AnimationCurve.Constant(0, 1, AvrcObjects.RadiusScale));
-            }
-            // TODO: Actually activate RX/ACK_TX triggers
-
-            return clip;
+            return EnableConstraintClip(parameters, parameters.Names.ObjectPath, local, parameters.Names.ObjRxPresent, parameters.Names.ObjTxLocal);
         }
 
         internal static AnimationClip TransmitterPresentClip(AvrcParameters parameters, LocalState local)
         {
-            var clip = EnableConstraintClip(parameters.Names.ObjectPath, local, parameters.Names.ObjTxPresent, parameters.Names.ObjRxLocal);
-            
-            // TODO: Actually activate TX/ACK_RX triggers
-            return clip;
+            return EnableConstraintClip(parameters, parameters.Names.ObjectPath, local, parameters.Names.ObjTxPresent, parameters.Names.ObjRxLocal);
         }
     }
 }
