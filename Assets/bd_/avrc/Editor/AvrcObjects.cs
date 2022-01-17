@@ -114,6 +114,7 @@ namespace net.fushizen.avrc
                 case AvrcParameters.AvrcParameterType.Float:
                     trigger.parameter = parameter.RxParameterName;
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
+                    triggerObj.SetActive(true);
                     break;
                 case AvrcParameters.AvrcParameterType.AvrcIsLocal:
                     trigger.parameter = $"{parameter.name}_F";
@@ -209,7 +210,7 @@ namespace net.fushizen.avrc
             foreach (var param in parameters.avrcParams)
             {
                 var triggerObj = createTrigger(obj, parameters, param.name);
-                triggerObj.SetActive(false);
+                triggerObj.SetActive(param.type == AvrcParameters.AvrcParameterType.Float);
 
                 if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
                 {
