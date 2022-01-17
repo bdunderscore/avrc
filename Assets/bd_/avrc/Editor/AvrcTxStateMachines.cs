@@ -35,6 +35,7 @@ namespace net.fushizen.avrc
         private void Setup()
         {
             AddBidirectionalTransferParameters();
+            AddOrReplaceLayer(Names.LayerSetup, TransmitterSetupLayer());
             AddOrReplaceLayer(Names.LayerTxEnable, TransmitterEnableStateMachine());
 
             foreach (var param in m_parameters.avrcParams)
@@ -44,6 +45,15 @@ namespace net.fushizen.avrc
             
             GarbageCollectAnimatorAsset();
             EditorUtility.SetDirty(m_animatorController);
+        }
+
+        private AnimatorStateMachine TransmitterSetupLayer()
+        {
+            return CommonSetupLayer(
+                m_parameters.Names.Prefix + "_EnableTX_", 
+                Names.ParamRxLocal,
+                AvrcAnimations.TransmitterPresentClip
+            );
         }
 
         private void AddBidirectionalTransferParameters()
@@ -89,12 +99,9 @@ namespace net.fushizen.avrc
             AddParameter(Names.ParamTxActive, AnimatorControllerParameterType.Int);
             
             AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
-            var entry = rootStateMachine.AddState("ConstraintEnabled");
-            
-            entry.motion = AvrcAnimations.Named(
-                m_parameters.Names.Prefix + "_EnableTX",
-                () => AvrcAnimations.ReceiverPresentClip(m_parameters)
-            );
+            var entry = rootStateMachine.AddState("Idle");
+
+            entry.motion = AvrcAssets.EmptyClip();
             entry.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.ParamTxActive, 0, false)};
 
             var timeout = rootStateMachine.AddState("Timeout");
@@ -362,31 +369,6 @@ namespace net.fushizen.avrc
             }
 
             return stateMachine;
-        }
-
-        private static AnimatorStateTransition AddInstantAnyTransition(AnimatorStateMachine sourceState, AnimatorState destinationState)
-        {
-            AnimatorStateTransition transition = sourceState.AddAnyStateTransition(destinationState);
-            transition.exitTime = 0;
-            transition.hasExitTime = false;
-            transition.duration = 0;
-            transition.canTransitionToSelf = false;
-            return transition;
-        }
-
-        private static AnimatorStateTransition AddInstantTransition(AnimatorState startState, AnimatorState state)
-        {
-            var transition = startState.AddTransition(state);
-            transition.exitTime = 0;
-            transition.hasExitTime = false;
-            transition.duration = 0;
-            return transition;
-        }
-
-        private void AddIsLocalCondition(AnimatorStateTransition transition)
-        {
-            AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
-            transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
         }
     }
 }

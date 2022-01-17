@@ -265,5 +265,86 @@ namespace net.fushizen.avrc
 
             return driver;
         }
+        
+        protected delegate AnimationClip ClipCreator(AvrcParameters parameters, AvrcAnimations.LocalState local);
+
+        /// <summary>
+        /// This state machine enables the main constraint, and adjusts bounds when it is running on the peer's
+        /// client.
+        /// </summary>
+        /// <param name="animPrefix"></param>
+        /// <param name="recvPeerLocal"></param>
+        /// <param name="clipCreator"></param>
+        /// <returns></returns>
+        protected AnimatorStateMachine CommonSetupLayer(string animPrefix, string recvPeerLocal, ClipCreator clipCreator)
+        {
+            AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
+
+            var init = rootStateMachine.AddState("Init");
+            init.motion = AvrcAnimations.Named(
+                animPrefix + "Init",
+                () => clipCreator(m_parameters, AvrcAnimations.LocalState.Unknown)
+            );
+
+            var ownerLocal = rootStateMachine.AddState("OwnerLocal");
+            ownerLocal.motion = AvrcAnimations.Named(
+                animPrefix + "OwnerLocal",
+                () => clipCreator(m_parameters, AvrcAnimations.LocalState.OwnerLocal)
+            );
+            var t = AddInstantTransition(init, ownerLocal);
+            AddIsLocalCondition(t);
+            // OwnerLocal is a terminal state.
+            
+            var peerLocal = rootStateMachine.AddState("PeerLocal");
+            peerLocal.motion = AvrcAnimations.Named(
+                animPrefix + "PeerLocal",
+                () => clipCreator(m_parameters, AvrcAnimations.LocalState.PeerLocal)
+            );
+            t = AddInstantTransition(init, peerLocal);
+            AddParameter(recvPeerLocal, AnimatorControllerParameterType.Float);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
+
+            var peerLocalTimer = rootStateMachine.AddState("PeerLocalTimeout");
+            peerLocalTimer.motion = peerLocal.motion;
+
+            t = AddInstantTransition(peerLocal, peerLocalTimer);
+            t.hasExitTime = true;
+            t.exitTime = 10;
+
+            t = AddInstantTransition(peerLocalTimer, peerLocal);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
+
+            t = AddInstantTransition(peerLocalTimer, init);
+            t.hasExitTime = true;
+            t.exitTime = 10;
+
+            return rootStateMachine;
+        }
+
+        protected static AnimatorStateTransition AddInstantAnyTransition(AnimatorStateMachine sourceState, AnimatorState destinationState)
+        {
+            AnimatorStateTransition transition = sourceState.AddAnyStateTransition(destinationState);
+            transition.exitTime = 0;
+            transition.hasExitTime = false;
+            transition.duration = 0;
+            transition.canTransitionToSelf = false;
+            return transition;
+        }
+
+        protected static AnimatorStateTransition AddInstantTransition(AnimatorState startState, AnimatorState state)
+        {
+            var transition = startState.AddTransition(state);
+            transition.exitTime = 0;
+            transition.hasExitTime = false;
+            transition.duration = 0;
+            return transition;
+        }
+
+        protected void AddIsLocalCondition(AnimatorStateTransition transition)
+        {
+            AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
+            transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
+        }
     }
 }

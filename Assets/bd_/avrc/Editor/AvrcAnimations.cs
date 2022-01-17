@@ -5,8 +5,15 @@ namespace net.fushizen.avrc
 {
     internal class AvrcAnimations
     {
-        
+        private const float BOUNDS_SIZE = 1000f;
         internal delegate AnimationClip GetClipDelegate();
+
+        internal enum LocalState
+        {
+            Unknown,
+            OwnerLocal,
+            PeerLocal
+        }
 
         internal static AnimationClip Named(string name, GetClipDelegate d)
         {
@@ -52,10 +59,37 @@ namespace net.fushizen.avrc
             return clip;
         }
 
-        internal static AnimationClip EnableConstraintClip(string path)
+        internal static AnimationClip EnableConstraintClip(
+            string path,
+            LocalState local,
+            string sendingSelfPresent,
+            string receivingPeerLocal
+        )
         {
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(ParentConstraint), "m_Active", AnimationCurve.Constant(0, 1, 1));
+
+            if (local == LocalState.OwnerLocal)
+            {
+                // When local we offset to the opposite side of the 
+                Vector3 offset = -AvrcObjects.PresencePositionOffset;
+                
+                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.x", 
+                    AnimationCurve.Constant(0, 1, offset.x));
+                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.y", 
+                    AnimationCurve.Constant(0, 1, offset.y));
+                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.z", 
+                    AnimationCurve.Constant(0, 1, offset.z));
+            }
+            else if (local == LocalState.PeerLocal)
+            {
+                clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.x",
+                    AnimationCurve.Constant(0, 1, BOUNDS_SIZE));
+                clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.y",
+                    AnimationCurve.Constant(0, 1, BOUNDS_SIZE));
+                clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.z",
+                    AnimationCurve.Constant(0, 1, BOUNDS_SIZE));
+            }
 
             return clip;
         }
@@ -69,9 +103,9 @@ namespace net.fushizen.avrc
         /// </summary>
         /// <param name="parameters"></param>
         /// <returns></returns>
-        internal static AnimationClip ReceiverPresentClip(AvrcParameters parameters)
+        internal static AnimationClip ReceiverPresentClip(AvrcParameters parameters, LocalState local)
         {
-            var clip = EnableConstraintClip(parameters.Names.ObjectPath);
+            var clip = EnableConstraintClip(parameters.Names.ObjectPath, local, parameters.Names.ObjRxPresent, parameters.Names.ObjTxLocal);
 
             foreach (var parameter in parameters.avrcParams)
             {
@@ -79,33 +113,16 @@ namespace net.fushizen.avrc
                 clip.SetCurve(gameObjectName, typeof(GameObject), "m_IsActive",
                     AnimationCurve.Constant(0, 1, AvrcObjects.RadiusScale));
             }
+            // TODO: Actually activate RX/ACK_TX triggers
 
             return clip;
         }
 
-        /// <summary>
-        /// Transmit each IsLocal parameter to the receiver.
-        /// </summary>
-        /// <param name="parameters"></param>
-        /// <returns></returns>
-        public static AnimationClip TransmitterLocalClip(AvrcParameters parameters)
+        internal static AnimationClip TransmitterPresentClip(AvrcParameters parameters, LocalState local)
         {
-            var clip = new AnimationClip();
-
-            foreach (var parameter in parameters.avrcParams)
-            {
-                if (parameter.type == AvrcParameters.AvrcParameterType.AvrcIsLocal)
-                {
-                    var gameObjectName = parameters.Names.ParameterPath(parameter);
-                    clip.SetCurve(gameObjectName, typeof(Transform), "m_LocalPosition.x",
-                        AnimationCurve.Constant(0, 1, 0));
-                    clip.SetCurve(gameObjectName, typeof(Transform), "m_LocalPosition.y",
-                        AnimationCurve.Constant(0, 1, 0));
-                    clip.SetCurve(gameObjectName, typeof(Transform), "m_LocalPosition.z",
-                        AnimationCurve.Constant(0, 1, 0));
-                }
-            }
-
+            var clip = EnableConstraintClip(parameters.Names.ObjectPath, local, parameters.Names.ObjTxPresent, parameters.Names.ObjRxLocal);
+            
+            // TODO: Actually activate TX/ACK_RX triggers
             return clip;
         }
     }

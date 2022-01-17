@@ -24,7 +24,7 @@ namespace net.fushizen.avrc
         
         private void Setup() {
             // Enable the constraint that places our receiver triggers at the correct location
-            AddOrReplaceLayer(Names.LayerRxConstraint, ConstraintSetupStateMachine());
+            AddOrReplaceLayer(Names.LayerSetup, ReceiverSetupLayer());
             // Set up a mesh to expand our bounding box locally for the transmitter
             // AddOrReplaceLayer("_AVRC_" + Names.Prefix + "_RXBounds", BoundsSetupStateMachine());
             
@@ -37,17 +37,9 @@ namespace net.fushizen.avrc
             EditorUtility.SetDirty(m_animatorController);
         }
 
-        private AnimatorStateMachine ConstraintSetupStateMachine()
+        private AnimatorStateMachine ReceiverSetupLayer()
         {
-            AnimatorStateMachine stateMachine = new AnimatorStateMachine();
-            var entry = stateMachine.AddState("Entry");
-
-            entry.motion = AvrcAnimations.Named(
-                $"{Names.Prefix}_EnableRX",
-                () => AvrcAnimations.EnableConstraintClip(Names.ObjectPath)
-            );
-
-            return stateMachine;
+            return CommonSetupLayer(Names.Prefix + "_EnableRX_", Names.ParamTxLocal, AvrcAnimations.ReceiverPresentClip);
         }
 
         protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
