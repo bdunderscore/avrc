@@ -72,7 +72,6 @@ namespace net.fushizen.avrc
             switch (parameter.type)
             {
                 case AvrcParameters.AvrcParameterType.Bool:
-                case AvrcParameters.AvrcParameterType.AvrcLock:
                     animatorStateMachine = BoolParamLayer(parameter);
                     break;
                 case AvrcParameters.AvrcParameterType.Int:
@@ -81,7 +80,7 @@ namespace net.fushizen.avrc
                 case AvrcParameters.AvrcParameterType.Float:
                     animatorStateMachine = FloatParamLayer(parameter);
                     break;
-                case AvrcParameters.AvrcParameterType.AvrcIsLocal:
+                case AvrcParameters.AvrcParameterType.IsLocal:
                     animatorStateMachine = IsLocalParamLayer(parameter);
                     break;
                 case AvrcParameters.AvrcParameterType.BidiInt:

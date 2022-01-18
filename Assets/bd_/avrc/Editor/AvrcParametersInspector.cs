@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
+using static net.fushizen.avrc.AvrcParameters;
 using Debug = System.Diagnostics.Debug;
 using Random = UnityEngine.Random;
 
@@ -94,11 +95,32 @@ namespace net.fushizen.avrc
 
         private static bool ElementHasRangeProp(SerializedProperty elem)
         {
-            var ty = elem.FindPropertyRelative("type");
-            var tyName = ty.enumNames[ty.enumValueIndex];
+            var tyName = ElementType(elem);
 
-            var hasRange = tyName.Equals("BidiInt") || tyName.Equals("Int");
+            var hasRange = tyName == AvrcParameterType.Int || tyName == AvrcParameterType.BidiInt;
             return hasRange;
+        }
+
+        private static AvrcParameterType? ElementType(SerializedProperty elem)
+        {
+            var tyProp = elem.FindPropertyRelative("type");
+            if (tyProp.enumValueIndex < 0 || tyProp.enumValueIndex >= tyProp.enumNames.Length)
+            {
+                return null;
+            }
+
+            AvrcParameterType ty;
+            if (Enum.TryParse(
+                    tyProp.enumNames[tyProp.enumValueIndex],
+                    out ty
+                ))
+            {
+                return ty;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         static Rect AdvanceRect(ref Rect rect, Single width, Single padBefore = 0, Single padAfter = 0)
@@ -168,21 +190,34 @@ namespace net.fushizen.avrc
                 GUIContent.none
             );
 
-            EditorGUI.PropertyField(
-                AdvanceRect(ref rect, 100),
-                element.FindPropertyRelative("name"),
-                GUIContent.none
-            );
+            var propName = element.FindPropertyRelative("name");
+            if (ElementType(element) != AvrcParameterType.IsLocal)
+            {
+                EditorGUI.PropertyField(
+                    AdvanceRect(ref rect, 100),
+                    propName,
+                    GUIContent.none
+                );                
+            }
+            else {
+                rect.x += 100;
+            }
+            
 
             RenderLabel(ref rect, "RX parameter", padBefore: 20, padAfter: 10);
 
             var rxNameRect = AdvanceRect(ref rect, 100);
+            var propRxName = element.FindPropertyRelative("rxName");
             EditorGUI.PropertyField(
                 rxNameRect,
-                element.FindPropertyRelative("rxName"),
+                propRxName,
                 GUIContent.none
             );
-            
+
+            if (ElementType(element) == AvrcParameterType.IsLocal)
+            {
+                propName.stringValue = propRxName.stringValue;
+            }
 
             if (element.FindPropertyRelative("rxName").stringValue.Equals(""))
             {

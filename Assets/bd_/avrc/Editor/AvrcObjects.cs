@@ -103,6 +103,9 @@ namespace net.fushizen.avrc
             AvrcParameters.AvrcParameter parameter
         )
         {
+            // IsLocal parameters are transmitted using the presence test triggers
+            if (parameter.type == AvrcParameters.AvrcParameterType.IsLocal) return;
+            
             var triggerObj = createTrigger(parent, parameters, parameter.name);
 
             var trigger = triggerObj.GetComponent<VRCAvatarTrigger>();
@@ -116,12 +119,11 @@ namespace net.fushizen.avrc
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Proximity;
                     triggerObj.SetActive(true);
                     break;
-                case AvrcParameters.AvrcParameterType.AvrcIsLocal:
+                case AvrcParameters.AvrcParameterType.IsLocal:
                     trigger.parameter = $"{parameter.name}_F";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Constant;
                     trigger.parameterValue = 1;
                     break;
-                case AvrcParameters.AvrcParameterType.AvrcLock:
                 case AvrcParameters.AvrcParameterType.Bool:
                     trigger.parameter = $"{parameter.name}_F";
                     trigger.receiverType = VRCAvatarTrigger.ReceiverType.Constant;
@@ -209,6 +211,9 @@ namespace net.fushizen.avrc
 
             foreach (var param in parameters.avrcParams)
             {
+                // IsLocal parameters are implicitly transmitted using the presence test trigger
+                if (param.type == AvrcParameters.AvrcParameterType.IsLocal) continue;
+
                 var triggerObj = createTrigger(obj, parameters, param.name);
                 triggerObj.SetActive(param.type == AvrcParameters.AvrcParameterType.Float);
 

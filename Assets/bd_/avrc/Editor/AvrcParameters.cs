@@ -29,8 +29,7 @@ namespace net.fushizen.avrc
             Bool,
             Int,
             Float,
-            AvrcLock,
-            AvrcIsLocal,
+            IsLocal,
             BidiInt
         }
         

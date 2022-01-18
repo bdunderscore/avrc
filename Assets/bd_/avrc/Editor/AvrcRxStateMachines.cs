@@ -44,7 +44,44 @@ namespace net.fushizen.avrc
 
         protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
         {
-            return BoolParamLayer(parameter, false);
+            var stateMachine = new AnimatorStateMachine();
+
+            var init = stateMachine.AddState("Init");
+            AddParameter(parameter.rxName, AnimatorControllerParameterType.Bool);
+            init.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(parameter.rxName, 0, false)
+            };
+            init.motion = AvrcAssets.EmptyClip();
+
+            var local = stateMachine.AddState("IsLocal");
+            local.motion = init.motion;
+            local.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(parameter.rxName, 1, false)
+            };
+
+            var timeout = stateMachine.AddState("Timeout");
+            timeout.motion = init.motion;
+
+            var t = AddInstantTransition(init, local);
+            AddParameter(Names.ParamTxLocal, AnimatorControllerParameterType.Float);
+            AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.ParamTxLocal);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
+
+            t = AddInstantTransition(local, timeout);
+            t.exitTime = 2;
+            t.hasExitTime = true;
+
+            t = AddInstantTransition(timeout, local);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.ParamTxLocal);
+
+            t = AddInstantTransition(timeout, init);
+            t.exitTime = 2;
+            t.hasExitTime = true;
+
+            return stateMachine;
         }
 
         protected override AnimatorStateMachine BoolParamLayer(AvrcParameters.AvrcParameter parameter)

@@ -145,22 +145,8 @@ namespace net.fushizen.avrc
 
         protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
         {
-            AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
-            var entry = rootStateMachine.AddState("Entry");
-            var isLocal = rootStateMachine.AddState("IsLocal");
-            
-            var transition = entry.AddTransition(isLocal, false);
-            transition.duration = 0;
-            transition.hasExitTime = false;
-            transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
-            
-            entry.motion = AvrcAssets.EmptyClip();
-            isLocal.motion = AvrcAnimations.Named(
-                m_parameters.Names.Prefix + "_" + parameter.name,
-                () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset, 1)
-            );
-
-            return rootStateMachine;
+            // No TX work needed for the IsLocal layers
+            return null;
         }
 
         protected override AnimatorStateMachine BoolParamLayer(AvrcParameters.AvrcParameter parameter)
