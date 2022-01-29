@@ -97,9 +97,10 @@ namespace net.fushizen.avrc
         
         static string[] OnWillSaveAssets(string[] paths)
         {
+            var pathList = new HashSet<string>(paths);
+
             if (paths.Any(p => sourceMenuPaths.Contains(p)))
             {
-                var pathList = new HashSet<string>(paths);
                 
                 foreach (var cloner in avrcMenuPaths.Values)
                 {
@@ -110,6 +111,11 @@ namespace net.fushizen.avrc
                 }
 
                 paths = pathList.ToArray();
+            }
+
+            foreach (var p in paths.Where(avrcMenuPaths.ContainsKey))
+            {
+                avrcMenuPaths[p].SyncMenus();
             }
 
             return paths;

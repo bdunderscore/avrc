@@ -44,7 +44,7 @@ namespace net.fushizen.avrc
             _avrcParameters = avrcParams;
 
             var path = AssetDatabase.GetAssetPath(_avrcParameters);
-            _notReady = (path == null || path.Equals("") || _avrcParameters.sourceExpressionMenu == null);
+            _notReady = path == null || path.Equals("");
             if (_notReady) return;
 
             // Create a new VRCExpressionsMenu asset if not present
@@ -54,8 +54,6 @@ namespace net.fushizen.avrc
                 _avrcParameters.embeddedExpressionsMenu = menu;
                 AssetDatabase.AddObjectToAsset(menu, _avrcParameters);
             }
-
-            srcToCloneMap[_avrcParameters.sourceExpressionMenu] = _avrcParameters.embeddedExpressionsMenu;
         }
 
         public static MenuCloner InitCloner(AvrcParameters avrcParameters)
@@ -165,6 +163,9 @@ namespace net.fushizen.avrc
             {
                 dirty = _avrcParameters.embeddedExpressionsMenu != null;
                 _avrcParameters.embeddedExpressionsMenu = null;
+                
+                CleanAssets();
+                
                 return dirty;
             }
             
@@ -212,6 +213,7 @@ namespace net.fushizen.avrc
             {
                 if (obj is VRCExpressionsMenu menu && !enqueuedAssets.Contains(menu))
                 {
+                    Debug.Log($"Remove {menu.name}");
                     AssetDatabase.RemoveObjectFromAsset(menu);
                     UnityEngine.Object.DestroyImmediate(menu);
                 }
