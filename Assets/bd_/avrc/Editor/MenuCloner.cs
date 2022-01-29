@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.VersionControl;
 using UnityEngine;
@@ -21,6 +22,23 @@ namespace net.fushizen.avrc
         private Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> srcToCloneMap
             = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
 
+        /// <summary>
+        /// Returns the set of asset paths that correspond to the source menus (including submenus) for this cloner. +        /// </summary>
+        internal IEnumerable<string> SourcePaths
+        {
+            get
+            {
+                return srcToCloneMap.Keys.Select(AssetDatabase.GetAssetPath);
+            }
+        }
+
+        internal AvrcParameters AvrcParams
+        {
+            get
+            {
+                return _avrcParameters;
+            }
+        }
         private MenuCloner(AvrcParameters avrcParams)
         {
             _avrcParameters = avrcParams;
@@ -137,15 +155,22 @@ namespace net.fushizen.avrc
             return dirty;
         }
         
-        public void SyncMenus()
+        public bool SyncMenus()
         {
             enqueuedAssets.Clear();
             pendingClone.Clear();
+
+            bool dirty = false;
+            if (_avrcParameters.sourceExpressionMenu == null)
+            {
+                dirty = _avrcParameters.embeddedExpressionsMenu != null;
+                _avrcParameters.embeddedExpressionsMenu = null;
+                return dirty;
+            }
             
             // Bootstrap
             mapAsset(_avrcParameters.sourceExpressionMenu);
 
-            bool dirty = false;
             while (pendingClone.Count > 0)
             {
                 var nextToClone = pendingClone.Dequeue();
@@ -162,6 +187,8 @@ namespace net.fushizen.avrc
             }
             
             CleanAssets();
+
+            return dirty;
         }
 
         public void CleanAssets()
@@ -185,7 +212,6 @@ namespace net.fushizen.avrc
             {
                 if (obj is VRCExpressionsMenu menu && !enqueuedAssets.Contains(menu))
                 {
-                    Debug.Log($"Pruning asset {menu.name}");
                     AssetDatabase.RemoveObjectFromAsset(menu);
                     UnityEngine.Object.DestroyImmediate(menu);
                 }
