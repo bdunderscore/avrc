@@ -17,6 +17,15 @@ namespace net.fushizen.avrc
         public Vector3 baseOffset;
         public string prefix;
 
+        /// <summary>
+        /// Reference to an expressions menu asset that will be cloned into this AvrcParameters asset.
+        /// </summary>
+        public VRCExpressionsMenu sourceExpressionMenu;
+        /// <summary>
+        /// Reference to the expressions menu asset embedded in this AvrcParameters asset.
+        /// </summary>
+        public VRCExpressionsMenu embeddedExpressionsMenu;
+
         [SuppressMessage("ReSharper", "HeapView.ObjectAllocation.Evident")]
         public AvrcParameters()
         {

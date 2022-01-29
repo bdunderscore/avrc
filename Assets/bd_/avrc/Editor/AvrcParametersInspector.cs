@@ -69,8 +69,15 @@ namespace net.fushizen.avrc
             }
             
             serializedObject.Update();
+
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu)));
+            if (GUILayout.Button("Sync menus"))
+            {
+                var cloner = MenuCloner.InitCloner((AvrcParameters) target);
+                if (cloner != null) cloner.SyncMenus();
+            }
             
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("prefix"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)));
             EditorGUILayout.Separator();
        
             Rect rect = GUILayoutUtility.GetRect(100, _paramsList.GetHeight(), new GUIStyle());
