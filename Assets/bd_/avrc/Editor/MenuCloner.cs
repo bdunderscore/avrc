@@ -15,6 +15,7 @@ namespace net.fushizen.avrc
     public class MenuCloner
     {
         private readonly SerializedProperty _dstProperty;
+        private readonly UnityEngine.Object _containingObject;
         private readonly bool _notReady;
 
         private HashSet<VRCExpressionsMenu> enqueuedAssets = new HashSet<VRCExpressionsMenu>();
@@ -44,7 +45,7 @@ namespace net.fushizen.avrc
         {
             get
             {
-                return _dstProperty.serializedObject.targetObject;
+                return _containingObject;
             }
         }
 
@@ -56,9 +57,10 @@ namespace net.fushizen.avrc
             }
         }
 
-        private MenuCloner(SerializedProperty dstProperty)
+        public MenuCloner(SerializedProperty dstProperty, UnityEngine.Object containingObject)
         {
             _dstProperty = dstProperty;
+            _containingObject = containingObject;
 
             var path = ContainingPath;
             _notReady = path == null || path.Equals("");
@@ -67,7 +69,7 @@ namespace net.fushizen.avrc
 
         public static MenuCloner InitCloner(AvrcParameters avrcParameters)
         {
-            var cloner = new MenuCloner(new SerializedObject(avrcParameters).FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu)));
+            var cloner = new MenuCloner(new SerializedObject(avrcParameters).FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu)), avrcParameters);
 
             if (cloner._notReady)
             {
