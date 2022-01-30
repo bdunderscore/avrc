@@ -165,13 +165,8 @@ namespace net.fushizen.avrc
             bool dirty;
             if (sourceMenu == null)
             {
-                dirty = _dstProperty.objectReferenceValue != null;
-                _dstProperty.objectReferenceValue = null;
-                _dstProperty.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                
                 CleanAssets();
-                
-                return dirty;
+                return false;
             }
             
             // Bootstrap

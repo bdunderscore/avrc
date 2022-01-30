@@ -14,7 +14,6 @@ namespace net.fushizen.avrc
     [CustomEditor(typeof(AvrcParameters))]
     public class AvrcParametersInspector : Editor
     {
-        private VRCAvatarDescriptor _fApplyToDescriptor;
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
 
@@ -32,12 +31,15 @@ namespace net.fushizen.avrc
         }
 
         public override void OnInspectorGUI()
-        {
-            _fApplyToDescriptor = EditorGUILayout.ObjectField("Avatar", _fApplyToDescriptor, typeof(VRCAvatarDescriptor), true)
-                as VRCAvatarDescriptor;
-            
+        {            
             // ReSharper disable once LocalVariableHidesMember
             AvrcParameters target = this.target as AvrcParameters;
+            
+            if (GUILayout.Button("Install"))
+            {
+                InstallWindow.DisplayWindow(target);
+            }
+            
             Debug.Assert(target != null, nameof(target) + " != null");
             
             if (target.baseOffset.sqrMagnitude < 1)
@@ -51,30 +53,22 @@ namespace net.fushizen.avrc
                 AssetDatabase.SaveAssets();
             }
 
-            using (new EditorGUI.DisabledScope(_fApplyToDescriptor == null))
-            {
-                GUILayout.BeginHorizontal();
-
-                if (GUILayout.Button("Apply Receiver"))
-                {
-                    ApplyReceiver();
-                }
-
-                if (GUILayout.Button("Apply Transmitter"))
-                {
-                    ApplyTransmitter();
-                }
-                
-                GUILayout.EndHorizontal();
-            }
-            
             serializedObject.Update();
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu)));
-            if (GUILayout.Button("Sync menus"))
+            var srcMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu));
+            var srcMenu = srcMenuProp.objectReferenceValue;
+            EditorGUILayout.PropertyField(srcMenuProp);
+            if (srcMenu != srcMenuProp.objectReferenceValue && srcMenuProp.objectReferenceValue == null)
+            {
+                // Clear the destination menu property so we'll clean up the cloned assets.
+                // MenuCloner will be run when this asset is saved to do the cleanup process.
+                var destMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
+                destMenuProp.objectReferenceValue = null;
+            }
+            /*if (GUILayout.Button("Sync menus"))
             {
                 MenuCloner.InitCloner(target)?.SyncMenus(target.sourceExpressionMenu);
-            }
+            }*/
             
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)));
             EditorGUILayout.Separator();
@@ -254,52 +248,6 @@ namespace net.fushizen.avrc
             }
         }
 
-        private static GameObject CreateRoot(GameObject avatar)
-        {
-            Transform rootTransform = avatar.transform.Find("AVRC");
-            GameObject root;
-            if (rootTransform != null)
-            {
-                root = rootTransform.gameObject;
-            } else {
-                root = new GameObject
-                {
-                    transform =
-                    {
-                        parent = avatar.transform,
-                        localPosition = Vector3.zero,
-                        localRotation = Quaternion.identity
-                    },
-                    name = "AVRC"
-                };
-                Undo.RegisterCreatedObjectUndo(root, "AVRC setup");
-            }
 
-            return root;
-        }
-        
-        // ReSharper disable Unity.PerformanceAnalysis
-        private void ApplyReceiver()
-        {
-            var avrcParameters = target as AvrcParameters;
-            if (avrcParameters == null) return;
-            
-            var root = CreateRoot(_fApplyToDescriptor.gameObject);
-            
-            AvrcObjects.buildReceiverBase(root, avrcParameters.Names.Prefix, avrcParameters);
-            AvrcRxStateMachines.SetupRx(_fApplyToDescriptor, avrcParameters);
-        }
-
-        // ReSharper disable Unity.PerformanceAnalysis
-        private void ApplyTransmitter()
-        {
-            var avrcParameters = target as AvrcParameters;
-            if (avrcParameters == null) return;
-            
-            var root = CreateRoot(_fApplyToDescriptor.gameObject);
-            
-            AvrcObjects.buildTransmitterBase(root, avrcParameters.Names.Prefix, avrcParameters);
-            AvrcTxStateMachines.SetupTx(_fApplyToDescriptor, avrcParameters);
-        }
     }
 }
