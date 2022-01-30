@@ -14,7 +14,7 @@ namespace net.fushizen.avrc
     /// </summary>
     public class MenuCloner
     {
-        private readonly AvrcParameters _avrcParameters;
+        private readonly SerializedProperty _dstProperty;
         private readonly bool _notReady;
 
         private HashSet<VRCExpressionsMenu> enqueuedAssets = new HashSet<VRCExpressionsMenu>();
@@ -32,33 +32,42 @@ namespace net.fushizen.avrc
             }
         }
 
-        internal AvrcParameters AvrcParams
+        internal SerializedProperty ReferencingProperty
         {
             get
             {
-                return _avrcParameters;
+                return _dstProperty;
             }
         }
-        private MenuCloner(AvrcParameters avrcParams)
-        {
-            _avrcParameters = avrcParams;
 
-            var path = AssetDatabase.GetAssetPath(_avrcParameters);
+        internal UnityEngine.Object ContainingObject
+        {
+            get
+            {
+                return _dstProperty.serializedObject.targetObject;
+            }
+        }
+
+        internal string ContainingPath
+        {
+            get
+            {
+                return AssetDatabase.GetAssetPath(ContainingObject);
+            }
+        }
+
+        private MenuCloner(SerializedProperty dstProperty)
+        {
+            _dstProperty = dstProperty;
+
+            var path = ContainingPath;
             _notReady = path == null || path.Equals("");
             if (_notReady) return;
-
-            // Create a new VRCExpressionsMenu asset if not present
-            if (_avrcParameters.embeddedExpressionsMenu == null)
-            {
-                var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                _avrcParameters.embeddedExpressionsMenu = menu;
-                AssetDatabase.AddObjectToAsset(menu, _avrcParameters);
-            }
         }
 
         public static MenuCloner InitCloner(AvrcParameters avrcParameters)
         {
-            var cloner = new MenuCloner(avrcParameters);
+            var cloner = new MenuCloner(new SerializedObject(avrcParameters).FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu)));
 
             if (cloner._notReady)
             {
@@ -73,24 +82,23 @@ namespace net.fushizen.avrc
             VRCExpressionsMenu target;
             if (srcToCloneMap.ContainsKey(src))
             {
-                target = srcToCloneMap[src];
+                return srcToCloneMap[src];
             }
             else if (hint != null && !enqueuedAssets.Contains(hint)
-                                  && AssetDatabase.GetAssetPath(_avrcParameters).Equals(AssetDatabase.GetAssetPath(hint)))
+                                  && ContainingPath.Equals(AssetDatabase.GetAssetPath(hint)))
             {
                 target = hint;
 
             }
             else {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-                AssetDatabase.AddObjectToAsset(menu, _avrcParameters);
+                AssetDatabase.AddObjectToAsset(menu, ContainingObject);
                 target = menu;
             }
             
             srcToCloneMap[src] = target;
             target.name = src.name;
             enqueuedAssets.Add(target);
-            Debug.Log($"Enqueue source asset {AssetDatabase.GetAssetPath(src)}");
             pendingClone.Enqueue(src);
 
             return target;
@@ -98,7 +106,6 @@ namespace net.fushizen.avrc
 
         private bool SyncSingleMenu(VRCExpressionsMenu sourceMenu)
         {
-            Debug.Log($"Visit source asset {AssetDatabase.GetAssetPath(sourceMenu)}");
             var source = new SerializedObject(sourceMenu);
             var target = new SerializedObject(srcToCloneMap[sourceMenu]);
             source.UpdateIfRequiredOrScript();
@@ -118,13 +125,10 @@ namespace net.fushizen.avrc
                     var targetProp = target.FindProperty(iter.propertyPath);
                     var submenu = mapAsset(menu, targetProp.objectReferenceValue as VRCExpressionsMenu);
                     
-                    Debug.Log($"Target {(targetProp.objectReferenceValue != null ? "" + targetProp.objectReferenceValue.GetInstanceID() : "(null)")} " +
-                              $"Source {menu.GetInstanceID()} Clone {submenu.GetInstanceID()}");
                     if (targetProp.objectReferenceValue != submenu)
                     {
                         targetProp.objectReferenceValue = submenu;
                         dirty = true;
-                        Debug.Log($"{iter.propertyPath}/{iter.propertyType}");
                     }
                     
                     // Skip the m_FileID property
@@ -137,14 +141,12 @@ namespace net.fushizen.avrc
                     if (changed)
                     {
                         dirty = true;
-                        Debug.Log($"{iter.propertyPath}/{iter.propertyType}");
                     }
                 }
             }
 
             if (dirty)
             {
-                Debug.Log($"Dirty: {target.targetObject.name}");
                 target.ApplyModifiedPropertiesWithoutUndo();
                 target.UpdateIfRequiredOrScript();
                 EditorUtility.SetDirty(srcToCloneMap[sourceMenu]);
@@ -153,16 +155,19 @@ namespace net.fushizen.avrc
             return dirty;
         }
         
-        public bool SyncMenus()
+        public bool SyncMenus(VRCExpressionsMenu sourceMenu)
         {
             enqueuedAssets.Clear();
             pendingClone.Clear();
 
-            bool dirty = false;
-            if (_avrcParameters.sourceExpressionMenu == null)
+            _dstProperty.serializedObject.UpdateIfRequiredOrScript();
+
+            bool dirty;
+            if (sourceMenu == null)
             {
-                dirty = _avrcParameters.embeddedExpressionsMenu != null;
-                _avrcParameters.embeddedExpressionsMenu = null;
+                dirty = _dstProperty.objectReferenceValue != null;
+                _dstProperty.objectReferenceValue = null;
+                _dstProperty.serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 
                 CleanAssets();
                 
@@ -170,7 +175,9 @@ namespace net.fushizen.avrc
             }
             
             // Bootstrap
-            mapAsset(_avrcParameters.sourceExpressionMenu);
+            var priorValue = _dstProperty.objectReferenceValue;
+            _dstProperty.objectReferenceValue = mapAsset(sourceMenu, priorValue as VRCExpressionsMenu);
+            dirty = priorValue != _dstProperty.objectReferenceValue;
 
             while (pendingClone.Count > 0)
             {
@@ -184,7 +191,8 @@ namespace net.fushizen.avrc
 
             if (dirty)
             {
-                EditorUtility.SetDirty(_avrcParameters);
+                _dstProperty.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(ContainingObject);
             }
             
             CleanAssets();
@@ -208,12 +216,11 @@ namespace net.fushizen.avrc
                 srcToCloneMap.Remove(toRemove);
             }
             
-            var objects = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(_avrcParameters));
+            var objects = AssetDatabase.LoadAllAssetsAtPath(ContainingPath);
             foreach (var obj in objects)
             {
                 if (obj is VRCExpressionsMenu menu && !enqueuedAssets.Contains(menu))
                 {
-                    Debug.Log($"Remove {menu.name}");
                     AssetDatabase.RemoveObjectFromAsset(menu);
                     UnityEngine.Object.DestroyImmediate(menu);
                 }

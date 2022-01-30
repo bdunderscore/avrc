@@ -73,8 +73,7 @@ namespace net.fushizen.avrc
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu)));
             if (GUILayout.Button("Sync menus"))
             {
-                var cloner = MenuCloner.InitCloner((AvrcParameters) target);
-                if (cloner != null) cloner.SyncMenus();
+                MenuCloner.InitCloner(target)?.SyncMenus(target.sourceExpressionMenu);
             }
             
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)));

@@ -71,7 +71,7 @@ namespace net.fushizen.avrc
             else
             {
                 avrcMenuPaths[path] = cloner;
-                cloner.SyncMenus();
+                cloner.SyncMenus(avrcParams.sourceExpressionMenu);
             }
         }
 
@@ -101,12 +101,11 @@ namespace net.fushizen.avrc
 
             if (paths.Any(p => sourceMenuPaths.Contains(p)))
             {
-                
                 foreach (var cloner in avrcMenuPaths.Values)
                 {
-                    if (cloner.SyncMenus())
+                    if (cloner.SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu))
                     {
-                        pathList.Add(AssetDatabase.GetAssetPath(cloner.AvrcParams));
+                        pathList.Add(cloner.ContainingPath);
                     }
                 }
 
@@ -115,7 +114,8 @@ namespace net.fushizen.avrc
 
             foreach (var p in paths.Where(avrcMenuPaths.ContainsKey))
             {
-                avrcMenuPaths[p].SyncMenus();
+                var cloner = avrcMenuPaths[p];
+                avrcMenuPaths[p].SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu);
             }
 
             return paths;
