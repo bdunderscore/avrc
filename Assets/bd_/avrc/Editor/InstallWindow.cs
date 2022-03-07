@@ -20,16 +20,18 @@ namespace net.fushizen.avrc
 
         private SerializedProperty prop_params, prop_targetAvatar, prop_installMenu;
         
+        private Localizations L => Localizations.Inst;
+        
         [SuppressMessage("ReSharper", "UnusedMember.Global")]
         public void EditorWindow()
         {
-            titleContent = new GUIContent("AVRC Installer");
+            titleContent = new GUIContent(L.INST_TITLE);
         }
         
-        [MenuItem("Window/AVRC Installer Test")]
+        [MenuItem("Window/bd_/AVRC Installer")]
         internal static void DisplayWindow(AvrcParameters p = null)
         {
-            var window = GetWindow<InstallWindow>(title: "AVRC Installer");
+            var window = GetWindow<InstallWindow>(Localizations.Inst.INST_TITLE.text);
 
             if (p != null)
             {
@@ -38,6 +40,8 @@ namespace net.fushizen.avrc
         }
         private void OnGUI()
         {
+            Localizations.SwitchLanguageButton();
+
             if (prop_params == null)
             {
                 var obj = new SerializedObject(this);
@@ -47,11 +51,11 @@ namespace net.fushizen.avrc
             }
 
             _params = EditorGUILayout.ObjectField(
-                "AVRC Params", _params, typeof(AvrcParameters), allowSceneObjects: false
+                L.INST_PARAMS, _params, typeof(AvrcParameters), allowSceneObjects: false
             ) as AvrcParameters;
             var priorTargetAvatar = _targetAvatar;
             _targetAvatar = EditorGUILayout.ObjectField(
-                "Target avatar", _targetAvatar, typeof(VRCAvatarDescriptor), allowSceneObjects: true
+                L.INST_AVATAR, _targetAvatar, typeof(VRCAvatarDescriptor), allowSceneObjects: true
             ) as VRCAvatarDescriptor;
 
             if (_targetAvatar != priorTargetAvatar)
@@ -62,7 +66,7 @@ namespace net.fushizen.avrc
             using (new EditorGUI.DisabledGroupScope(_params == null || _params.embeddedExpressionsMenu == null))
             {
                 _installMenu = EditorGUILayout.ObjectField(
-                    "Install menu under", _installMenu, typeof(VRCExpressionsMenu), allowSceneObjects: false
+                    L.INST_MENU, _installMenu, typeof(VRCExpressionsMenu), allowSceneObjects: false
                 ) as VRCExpressionsMenu;
             }
 
@@ -72,12 +76,12 @@ namespace net.fushizen.avrc
             {
                 using (new GUILayout.HorizontalScope())
                 {
-                    if (GUILayout.Button("Install transmitter"))
+                    if (GUILayout.Button(L.INST_TX))
                     {
                         ApplyTransmitter();
                     }
 
-                    if (GUILayout.Button("Install receiver"))
+                    if (GUILayout.Button(L.INST_RX))
                     {
                         ApplyReceiver();
                     }
@@ -90,14 +94,14 @@ namespace net.fushizen.avrc
 
             using (new EditorGUI.DisabledGroupScope(!hasThisAvrc))
             {
-                if (GUILayout.Button("Uninstall"))
+                if (GUILayout.Button(L.INST_UNINSTALL))
                 {
                     AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, _params);
                 }
             }
             using (new EditorGUI.DisabledGroupScope(!hasAnyAvrc))
             {
-                if (GUILayout.Button("Uninstall ALL AVRC components"))
+                if (GUILayout.Button(L.INST_UNINSTALL_ALL))
                 {
                     AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, null);
                 }
@@ -160,11 +164,11 @@ namespace net.fushizen.avrc
         {
             bool ok = true;
 
-            ok = ok && Precheck("AVRC Parameters must be set", _params != null);
-            ok = ok && Precheck("Prefix must not be empty", _params.prefix != null && !_params.prefix.Equals(""));
-            ok = ok && Precheck("Avatar must be selected", _targetAvatar != null);
-            ok = ok && Precheck("Avatar must have a FX layer", AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
-            ok = ok && Precheck("Selected submenu is full", !IsTargetMenuFull());
+            ok = ok && Precheck(L.INST_ERR_NO_PARAMS, _params != null);
+            ok = ok && Precheck(L.INST_NO_PREFIX, _params.prefix != null && !_params.prefix.Equals(""));
+            ok = ok && Precheck(L.INST_NO_AVATAR, _targetAvatar != null);
+            ok = ok && Precheck(L.INST_NO_FX, AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
+            ok = ok && Precheck(L.INST_MENU_FULL, !IsTargetMenuFull());
 
             return ok;
         }

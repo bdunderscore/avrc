@@ -17,6 +17,8 @@ namespace net.fushizen.avrc
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
         private AvrcParametersGenerator _paramsGen;
+        
+        private Localizations L => Localizations.Inst;
 
         [SuppressMessage("ReSharper", "HeapView.DelegateAllocation")]
         private void OnEnable()
@@ -37,8 +39,10 @@ namespace net.fushizen.avrc
         {            
             // ReSharper disable once LocalVariableHidesMember
             AvrcParameters target = this.target as AvrcParameters;
+
+            Localizations.SwitchLanguageButton();
             
-            if (GUILayout.Button("Install"))
+            if (GUILayout.Button(L.AP_INSTALL))
             {
                 InstallWindow.DisplayWindow(target);
             }
@@ -60,7 +64,7 @@ namespace net.fushizen.avrc
 
             var srcMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu));
             var srcMenu = srcMenuProp.objectReferenceValue;
-            EditorGUILayout.PropertyField(srcMenuProp);
+            EditorGUILayout.PropertyField(srcMenuProp, L.AP_SRC_MENU);
             if (srcMenu != srcMenuProp.objectReferenceValue && srcMenuProp.objectReferenceValue == null)
             {
                 // Clear the destination menu property so we'll clean up the cloned assets.
@@ -73,7 +77,7 @@ namespace net.fushizen.avrc
                 MenuCloner.InitCloner(target)?.SyncMenus(target.sourceExpressionMenu);
             }*/
             
-            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)), L.AP_PREFIX);
             EditorGUILayout.Separator();
        
             Rect rect = GUILayoutUtility.GetRect(100, _paramsList.GetHeight(), new GUIStyle());
@@ -141,7 +145,7 @@ namespace net.fushizen.avrc
         static void RenderLabel(
             ref Rect rect,
             GUIContent content,
-            GUIStyle style, 
+            GUIStyle style = null, 
             Single padBefore = 0,
             Single padAfter = 0)
         {
@@ -172,7 +176,7 @@ namespace net.fushizen.avrc
 
         private void OnDrawListHeader(Rect rect)
         {
-            EditorGUI.LabelField(rect, "Parameters");
+            EditorGUI.LabelField(rect, L.AP_PARAMETERS);
             rect.y += 4 + EditorGUIUtility.singleLineHeight;
             
         }
@@ -209,7 +213,7 @@ namespace net.fushizen.avrc
             }
             
 
-            RenderLabel(ref rect, "RX parameter", padBefore: 20, padAfter: 10);
+            RenderLabel(ref rect, L.AP_RX_PARAM, padBefore: 20, padAfter: 10);
 
             var rxNameRect = AdvanceRect(ref rect, 100);
             var propRxName = element.FindPropertyRelative("rxName");
@@ -246,7 +250,7 @@ namespace net.fushizen.avrc
                 rect.x = initialRect.x;
                 rect.y += 4 + EditorGUIUtility.singleLineHeight;
                 
-                RenderLabel(ref rect, "Range", padAfter: 10);
+                RenderLabel(ref rect, L.AP_RANGE, padAfter: 10);
                 EditorGUI.PropertyField(AdvanceRect(ref rect, 30), minVal, GUIContent.none);
                 RenderLabel(ref rect, "...");
                 EditorGUI.PropertyField(AdvanceRect(ref rect, 30), maxVal, GUIContent.none);

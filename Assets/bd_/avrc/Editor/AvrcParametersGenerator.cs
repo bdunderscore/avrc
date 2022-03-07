@@ -5,6 +5,7 @@ using BestHTTP.SecureProtocol.Org.BouncyCastle.Crypto.Parameters;
 using UnityEditor;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using UnityEngine;
+using UnityEngine.SocialPlatforms;
 using VRC.SDK3.Avatars.Components;
 
 namespace net.fushizen.avrc
@@ -19,6 +20,8 @@ namespace net.fushizen.avrc
         private AvrcParameters _parameters;
         private VRCAvatarDescriptor _avatar;
         private bool _foldout;
+        
+        private Localizations L => Localizations.Inst;
 
         internal AvrcParametersGenerator(
             AvrcParameters parameters
@@ -31,20 +34,20 @@ namespace net.fushizen.avrc
         {
             if (_parameters.sourceExpressionMenu == null) return;
 
-            _foldout = EditorGUILayout.Foldout(_foldout, "Generate from expressions menu");
+            _foldout = EditorGUILayout.Foldout(_foldout, L.GP_FOLDOUT);
             if (!_foldout)
             {
                 return;
             }
 
-            _avatar = EditorGUILayout.ObjectField("Reference Avatar", _avatar, typeof(VRCAvatarDescriptor), true)
+            _avatar = EditorGUILayout.ObjectField(L.GP_REF_AVATAR, _avatar, typeof(VRCAvatarDescriptor), true)
                     as VRCAvatarDescriptor;
 
             if (_avatar != null)
             {
                 if (_avatar.expressionParameters == null)
                 {
-                    EditorGUILayout.HelpBox("No expression parameters found", MessageType.Error);
+                    EditorGUILayout.HelpBox(L.GP_ERR_NO_PARAMS, MessageType.Error);
                     return;
                 }
 
@@ -57,7 +60,6 @@ namespace net.fushizen.avrc
                     foreach (var error in errors)
                     {
                         EditorGUILayout.HelpBox(error, MessageType.Error);
-
                     }
 
                     return;
@@ -68,14 +70,14 @@ namespace net.fushizen.avrc
 
                 if (paramList.Count == 0)
                 {
-                    EditorGUILayout.HelpBox("No new parameters found", MessageType.Info);
+                    EditorGUILayout.HelpBox(L.GP_ERR_NO_NEW_PARAMS, MessageType.Info);
                 }
                 else
                 {
-                    string msg = "Found parameters:\n" + string.Join("\n", paramList.Select(p => p.name));
+                    string msg = L.GP_FOUND_PARAMS + string.Join("\n", paramList.Select(p => p.name));
                     EditorGUILayout.HelpBox(msg, MessageType.Info);
 
-                    if (GUILayout.Button("Add parameters"))
+                    if (GUILayout.Button(L.GP_ADD_PARAMS))
                     {
                         foreach (var avrcParameter in paramList)
                         {
@@ -86,7 +88,7 @@ namespace net.fushizen.avrc
             }
         }
         
-        internal static Dictionary<string, AvrcParameter> GenerateParameters(
+        internal Dictionary<string, AvrcParameter> GenerateParameters(
             List<string> errors,
             VRCExpressionsMenu rootMenu, 
             VRCExpressionParameters expressionParameters
@@ -101,7 +103,7 @@ namespace net.fushizen.avrc
             {
                 if (knownParameters.ContainsKey(param.name))
                 {
-                    errors.Add($"Duplicate parameter: {param.name}");
+                    errors.Add(string.Format(L.GP_ERR_DUPLICATE, param.name));
                 }
                 else
                 {
@@ -154,7 +156,7 @@ namespace net.fushizen.avrc
             return avrcParams;
         }
 
-        private static void RecordFloatParam(
+        private void RecordFloatParam(
             List<string> errors,
             Dictionary<string, AvrcParameter> avrcParams,
             Dictionary<string, VRCExpressionParameters.Parameter> knownParameters, 
@@ -168,14 +170,14 @@ namespace net.fushizen.avrc
             
             if (!knownParameters.ContainsKey(subParameter.name))
             {
-                errors.Add($"Parameter not defined in expressions parameters: {subParameter.name}");
+                errors.Add(string.Format(L.GP_NOTDEF, subParameter.name));
                 return;
             }
             
             var ty = knownParameters[subParameter.name].valueType;
             if (ty != VRCExpressionParameters.ValueType.Float)
             {
-                errors.Add("Puppet menu subparameter is not a float: " + subParameter.name);
+                errors.Add(string.Format(L.GP_ERR_PUPPET_TYPE, subParameter.name));
                 return;
             }
             
@@ -191,7 +193,7 @@ namespace net.fushizen.avrc
             };
         }
 
-        private static void RecordIntParam(
+        private void RecordIntParam(
             List<string> errors, 
             Dictionary<string, AvrcParameter> avrcParams,
             Dictionary<string, VRCExpressionParameters.Parameter> knownParameters,
@@ -203,16 +205,15 @@ namespace net.fushizen.avrc
 
             if (!knownParameters.ContainsKey(controlParameter.name))
             {
-                errors.Add(
-                           $"Parameter {controlParameter.name} is not defined in the expression parameters."
-                           );
+                errors.Add(string.Format(L.GP_NOTDEF, controlParameter.name));
                 return;
             }
 
             var ty = knownParameters[controlParameter.name].valueType;
             if (ty == VRCExpressionParameters.ValueType.Float)
             {
-                errors.Add($"Primary parameter {controlParameter.name} is a float, not an int.");
+                errors.Add(string.Format(L.GP_ERR_PRIMARY_TYPE, controlParameter.name));
+                return;
             }
 
             var avrcType = ty == VRCExpressionParameters.ValueType.Bool
