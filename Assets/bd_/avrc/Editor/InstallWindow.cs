@@ -84,17 +84,22 @@ namespace net.fushizen.avrc
                 }
             }
 
-            using (new EditorGUI.DisabledGroupScope(true))
+            bool hasThisAvrc = (_params != null && _targetAvatar != null) 
+                               && AvrcUninstall.HasAvrcConfiguration(_targetAvatar, _params);
+            bool hasAnyAvrc = _targetAvatar != null && AvrcUninstall.HasAvrcConfiguration(_targetAvatar, null);
+
+            using (new EditorGUI.DisabledGroupScope(!hasThisAvrc))
             {
-
-                if (GUILayout.Button("TODO Uninstall"))
+                if (GUILayout.Button("Uninstall"))
                 {
-
+                    AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, _params);
                 }
-
-                if (GUILayout.Button("TODO Uninstall ALL AVRC components"))
+            }
+            using (new EditorGUI.DisabledGroupScope(!hasAnyAvrc))
+            {
+                if (GUILayout.Button("Uninstall ALL AVRC components"))
                 {
-
+                    AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, null);
                 }
             }
         }
@@ -156,8 +161,9 @@ namespace net.fushizen.avrc
             bool ok = true;
 
             ok = ok && Precheck("AVRC Parameters must be set", _params != null);
-            ok = ok && Precheck("Prefix must not be empty", _params.prefix != null);
+            ok = ok && Precheck("Prefix must not be empty", _params.prefix != null && !_params.prefix.Equals(""));
             ok = ok && Precheck("Avatar must be selected", _targetAvatar != null);
+            ok = ok && Precheck("Avatar must have a FX layer", AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
             ok = ok && Precheck("Selected submenu is full", !IsTargetMenuFull());
 
             return ok;

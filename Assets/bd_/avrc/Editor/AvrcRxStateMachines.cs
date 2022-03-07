@@ -33,7 +33,7 @@ namespace net.fushizen.avrc
                 CreateParameterLayer(param);
             }
 
-            GarbageCollectAnimatorAsset();
+            AvrcAnimatorUtils.GarbageCollectAnimatorAsset(m_animatorController);
             EditorUtility.SetDirty(m_animatorController);
         }
 

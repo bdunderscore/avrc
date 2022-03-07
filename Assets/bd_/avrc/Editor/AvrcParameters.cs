@@ -69,7 +69,7 @@ namespace net.fushizen.avrc
             }
 
             internal string ObjectPath => $"AVRC/{Prefix}";
-            private string LayerPrefix => $"_AVRC_{Prefix}";
+            internal string LayerPrefix => $"_AVRC_{Prefix}";
             internal string LayerSetup => $"{LayerPrefix}_Setup";
             internal string LayerRxConstraint => $"{LayerPrefix}_RXConstraint";
             internal string LayerTxEnable => $"{LayerPrefix}_TXEnable";
