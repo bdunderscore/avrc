@@ -16,6 +16,7 @@ namespace net.fushizen.avrc
     {
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
+        private AvrcParametersGenerator _paramsGen;
 
         [SuppressMessage("ReSharper", "HeapView.DelegateAllocation")]
         private void OnEnable()
@@ -28,6 +29,8 @@ namespace net.fushizen.avrc
                  drawElementCallback = OnDrawListElement,
                  elementHeightCallback = OnElementHeight
             };
+            
+            _paramsGen = new AvrcParametersGenerator(target as AvrcParameters);
         }
 
         public override void OnInspectorGUI()
@@ -77,6 +80,8 @@ namespace net.fushizen.avrc
             _paramsList.DoList(rect);
 
             serializedObject.ApplyModifiedProperties();
+            
+            _paramsGen.GenerateParametersUI();
         }
         private float OnElementHeight(int index)
         {
