@@ -1,6 +1,10 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using NUnit.Framework.Constraints;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -38,6 +42,12 @@ namespace net.fushizen.avrc
                 window._params = p;
             }
         }
+
+        private void OnEnable()
+        {
+            InitRemapPanel();
+        }
+
         private void OnGUI()
         {
             Localizations.SwitchLanguageButton();
@@ -61,6 +71,7 @@ namespace net.fushizen.avrc
             if (_targetAvatar != priorTargetAvatar)
             {
                 _installMenu = null;
+                InitRemapPanel();
             }
 
             using (new EditorGUI.DisabledGroupScope(_params == null || _params.embeddedExpressionsMenu == null))
@@ -69,6 +80,8 @@ namespace net.fushizen.avrc
                     L.INST_MENU, _installMenu, typeof(VRCExpressionsMenu), allowSceneObjects: false
                 ) as VRCExpressionsMenu;
             }
+
+            DrawRemapPanel();
 
             var prechecks = IsReadyToInstall();
 
@@ -233,5 +246,117 @@ namespace net.fushizen.avrc
 
             EditorUtility.SetDirty(_installMenu);
         }
+        
+        #region Remap panel
+
+        [Serializable]
+        private struct RemapEntry
+        {
+            public string paramName;
+            public string mappedName;
+        }
+
+        [Serializable]
+        private class RemapEntryContainer : ScriptableObject
+        {
+            public List<RemapEntry> _entries = new List<RemapEntry>();
+        }
+
+        private RemapEntryContainer _container;
+        private ReorderableList _remapList;
+        private AvrcNames _cachedNames;
+        bool _foldout_remap_panel = false;
+        private SerializedObject _remapObject;
+        private SerializedProperty _remapProp;
+
+        void InitRemapPanel()
+        {
+            _container = new RemapEntryContainer();
+            _remapList = null;
+
+            if (_params == null) return;
+
+            _cachedNames = new AvrcNames(_params);
+            
+            foreach (var k in _cachedNames.ParameterMap.Keys)
+            {
+                _container._entries.Add(new RemapEntry
+                {
+                    paramName = k,
+                    mappedName = ""
+                });
+            }
+
+            _remapObject = new SerializedObject(_container);
+            _remapProp = _remapObject.FindProperty(nameof(RemapEntryContainer._entries));
+            _remapList = new ReorderableList(_remapObject, _remapProp, false, false, false, false)
+            {
+                drawElementCallback = OnDrawListElement,
+                elementHeight = 4 + EditorGUIUtility.singleLineHeight
+            };
+        }
+
+        private Single labelWidth;
+        
+
+        private void OnDrawListElement(Rect rect, int index, bool isActive, bool isFocused)
+        {
+
+            Rect labelRect = new Rect()
+            {
+                width = labelWidth + 10,
+                height = rect.height,
+                x = rect.x,
+                y = rect.y
+            };
+            GUI.Label(labelRect, new GUIContent(_container._entries[index].paramName), GUI.skin.label);
+            rect.x += labelRect.width;
+            rect.width -= labelRect.width;
+
+            var prop = _remapProp.GetArrayElementAtIndex(index).FindPropertyRelative(nameof(RemapEntry.mappedName));
+            EditorGUI.PropertyField(rect, prop, GUIContent.none);
+
+            if (prop.stringValue.Equals(""))
+            {
+                GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontStyle = FontStyle.Italic,
+                    normal = { textColor = Color.gray}
+                };
+                EditorGUI.LabelField(
+                    rect,
+                    _cachedNames.ParameterMap[_container._entries[index].paramName],
+                    labelStyle
+                );
+            }
+        }
+
+        void DrawRemapPanel()
+        {
+            if (_remapList == null) return;
+            
+            _foldout_remap_panel = EditorGUILayout.Foldout(_foldout_remap_panel, "Remap parameter names");
+
+            // Compute label width
+            labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;
+
+            foreach (var p in _container._entries)
+            {
+                labelWidth = Mathf.Max(labelWidth, new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.paramName)).x);
+            }
+
+            EditorGUI.BeginChangeCheck();
+            
+            Rect rect = GUILayoutUtility.GetRect(100, _remapList.GetHeight(), new GUIStyle());
+            _remapList.DoList(rect);
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                _remapObject.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+    
+        #endregion
+        
     }
 }

@@ -28,8 +28,8 @@ namespace net.fushizen.avrc
             _paramsList = new ReorderableList(serializedObject, _paramsProp, true, true, true, true)
             {
                 drawHeaderCallback = OnDrawListHeader,
-                 drawElementCallback = OnDrawListElement,
-                 elementHeightCallback = OnElementHeight
+                drawElementCallback = OnDrawListElement,
+                elementHeightCallback = OnElementHeight
             };
             
             _paramsGen = new AvrcParametersGenerator(target as AvrcParameters);
