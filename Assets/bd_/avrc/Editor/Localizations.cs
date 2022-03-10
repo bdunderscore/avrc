@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Codice.Client.Common.Connection;
 using UnityEditor;
 using UnityEngine;
@@ -77,9 +79,25 @@ namespace net.fushizen.avrc
         
         #endregion
 
+        private GUIContent[] PROP_TYPE_NAMES_ = System.Enum.GetNames(typeof(AvrcParameters.AvrcParameterType))
+            .Select(n => new GUIContent(n)).ToArray();
+
+        public GUIContent[] PROP_TYPE_NAMES
+        {
+            get => PROP_TYPE_NAMES_.Clone() as GUIContent[];
+            private set => PROP_TYPE_NAMES_ = value;
+        }
+
         private static Localizations EN = new Localizations()
         {
-            
+            PROP_TYPE_NAMES = new GUIContent[]
+            {
+                new GUIContent("Bool"),
+                new GUIContent("Int"),
+                new GUIContent("Float"),
+                new GUIContent("IsLocal"),
+                new GUIContent("Int (bidirectional)")
+            }
         };
         
         private static Localizations JA = new Localizations()
@@ -119,6 +137,15 @@ namespace net.fushizen.avrc
             INST_NO_AVATAR = "対象アバターを選択してください",
             INST_NO_FX = "対象アバターにはFXレイヤーが必要です",
             INST_MENU_FULL = "選択されたメニューは満杯です",
+
+            PROP_TYPE_NAMES = new GUIContent[]
+            {
+                new GUIContent("Bool"),
+                new GUIContent("Int"),
+                new GUIContent("Float"),
+                new GUIContent("IsLocal"),
+                new GUIContent("Int (相互通信)")
+            }
         };
 
         private static Localizations Current = null;
