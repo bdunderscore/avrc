@@ -115,8 +115,11 @@ namespace net.fushizen.avrc
             if (avrcParameters == null) return;
             
             var root = CreateRoot(_targetAvatar.gameObject);
+
+            var names = new AvrcNames(avrcParameters);
+            var objects = new AvrcObjects(avrcParameters, names);
             
-            AvrcObjects.buildReceiverBase(root, avrcParameters.Names.Prefix, avrcParameters);
+            objects.buildReceiverBase(root, new AvrcNames(avrcParameters).Prefix);
             AvrcRxStateMachines.SetupRx(_targetAvatar, avrcParameters);
             
             InstallMenu();
@@ -130,7 +133,10 @@ namespace net.fushizen.avrc
             
             var root = CreateRoot(_targetAvatar.gameObject);
             
-            AvrcObjects.buildTransmitterBase(root, avrcParameters.Names.Prefix, avrcParameters);
+            var names = new AvrcNames(avrcParameters);
+            var objects = new AvrcObjects(avrcParameters, names);
+            
+            objects.buildReceiverBase(root, new AvrcNames(avrcParameters).Prefix);
             AvrcTxStateMachines.SetupTx(_targetAvatar, avrcParameters);
 
             InstallMenu();

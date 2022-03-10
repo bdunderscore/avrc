@@ -12,14 +12,14 @@ namespace net.fushizen.avrc
     [SuppressMessage("ReSharper", "HeapView.BoxingAllocation")]
     internal class AvrcRxStateMachines : AvrcLayerSetupCommon
     {
-        private AvrcRxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
-            : base(avatarDescriptor, parameters)
+        private AvrcRxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
+            : base(avatarDescriptor, parameters, names)
         {
         }
 
         public static void SetupRx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
         {
-            new AvrcRxStateMachines(avatarDescriptor, parameters).Setup();
+            new AvrcRxStateMachines(avatarDescriptor, parameters, new AvrcNames(parameters)).Setup();
         }
         
         private void Setup() {
@@ -28,18 +28,18 @@ namespace net.fushizen.avrc
             // Set up a mesh to expand our bounding box locally for the transmitter
             // AddOrReplaceLayer("_AVRC_" + Names.Prefix + "_RXBounds", BoundsSetupStateMachine());
             
-            foreach (var param in m_parameters.avrcParams)
+            foreach (var param in Parameters.avrcParams)
             {
                 CreateParameterLayer(param);
             }
 
-            AvrcAnimatorUtils.GarbageCollectAnimatorAsset(m_animatorController);
-            EditorUtility.SetDirty(m_animatorController);
+            AvrcAnimatorUtils.GarbageCollectAnimatorAsset(AnimatorController);
+            EditorUtility.SetDirty(AnimatorController);
         }
 
         private AnimatorStateMachine ReceiverSetupLayer()
         {
-            return CommonSetupLayer(Names.Prefix + "_EnableRX_", Names.ParamTxLocal, AvrcAnimations.ReceiverPresentClip);
+            return CommonSetupLayer(Names.Prefix + "_EnableRX_", Names.ParamTxLocal, Animations.ReceiverPresentClip);
         }
 
         protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
@@ -151,9 +151,9 @@ namespace net.fushizen.avrc
 
                 if (parameter.type == AvrcParameters.AvrcParameterType.BidiInt)
                 {
-                    states[i].motion = AvrcAnimations.Named(
+                    states[i].motion = Animations.Named(
                         $"{Names.Prefix}_{parameter.name}_{i}_ACK",
-                        () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter) + "_ACK", m_parameters.baseOffset, perState * i)
+                        () => Animations.ConstantClip(Names.ParameterPath(parameter) + "_ACK", Parameters.baseOffset, perState * i)
                     );
                     remoteDriven[i].motion = states[i].motion;
                 }

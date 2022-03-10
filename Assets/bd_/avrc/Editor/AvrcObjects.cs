@@ -13,6 +13,16 @@ namespace net.fushizen.avrc
 {
     internal class AvrcObjects
     {
+        private readonly AvrcParameters _parameters;
+        private readonly AvrcNames _names;
+
+        public AvrcObjects(AvrcParameters parameters, AvrcNames names)
+        {
+            this._parameters = parameters;
+            this._names = names;
+        }
+        
+        
         internal const float RadiusScale = 1f;
         internal const float PresenceTestValue = 0.66f;
         // One radius (RadiusScale * 0.5) away gives a distance of zero from the edge of the transmitter to the
@@ -20,7 +30,7 @@ namespace net.fushizen.avrc
         internal static readonly Vector3 PresencePositionOffset 
             = Vector3.forward * 0.5f * RadiusScale * (2 - PresenceTestValue);
 
-        internal static GameObject buildConstraintBase(
+        internal GameObject buildConstraintBase(
             GameObject parent,
             string name, 
             AvrcParameters parameters,
@@ -75,7 +85,7 @@ namespace net.fushizen.avrc
             return obj;
         }
 
-        internal static GameObject createTrigger<T>(GameObject parent, AvrcParameters parameters, string name, bool staticPresence = false)
+        internal GameObject createTrigger<T>(GameObject parent, string name, bool staticPresence = false)
             where T: ContactBase
         {
             var obj = new GameObject(name);
@@ -88,7 +98,7 @@ namespace net.fushizen.avrc
             T trigger = Undo.AddComponent<T>(obj);
             trigger.radius = 0.5f * RadiusScale;
             trigger.shapeType = ContactBase.ShapeType.Sphere;
-            trigger.collisionTags = new List<string>(new[] {$"{parameters.prefix}_{name}"});
+            trigger.collisionTags = new List<string>(new[] {$"{_parameters.prefix}_{name}"});
 
             if (staticPresence)
             {
@@ -98,16 +108,15 @@ namespace net.fushizen.avrc
             return obj;
         }
 
-        internal static void createReceiver(
+        internal void createReceiver(
             GameObject parent,
-            AvrcParameters parameters,
             AvrcParameters.AvrcParameter parameter
         )
         {
             // IsLocal parameters are transmitted using the presence test triggers
             if (parameter.type == AvrcParameters.AvrcParameterType.IsLocal) return;
             
-            var triggerObj = createTrigger<VRCContactReceiver>(parent, parameters, parameter.name);
+            var triggerObj = createTrigger<VRCContactReceiver>(parent, parameter.name);
 
             var trigger = triggerObj.GetComponent<VRCContactReceiver>();
             trigger.allowSelf = false;
@@ -140,7 +149,7 @@ namespace net.fushizen.avrc
                     trigger.position = new Vector3(0, 0, 0);
                     
                     // Create ACK trigger
-                    triggerObj = createTrigger<VRCContactSender>(parent, parameters, $"{parameter.name}_ACK");
+                    triggerObj = createTrigger<VRCContactSender>(parent, $"{parameter.name}_ACK");
                     triggerObj.SetActive(false);
                     var sender = triggerObj.GetComponent<VRCContactSender>();
                     sender.position = new Vector3(0, 0, 0);
@@ -150,69 +159,68 @@ namespace net.fushizen.avrc
             }
         }
 
-        internal static GameObject buildReceiverBase(GameObject parent, string name, AvrcParameters parameters)
+        internal GameObject buildReceiverBase(GameObject parent, string name)
         {
-            var obj = buildConstraintBase(parent, name, parameters);
+            var obj = buildConstraintBase(parent, name, _parameters);
             
             // This trigger acts as a signal to the transmitter that we are listening locally (and that the anti-culling
             // object should be activated).
             // Note that RXPresent and TXPresent are offset from the base object, so that rotations affect them more
             // strongly than the actual transmitted value.
-            createTrigger<VRCContactSender>(obj, parameters, "$RXPresent", staticPresence: true);
+            createTrigger<VRCContactSender>(obj, "$RXPresent", staticPresence: true);
             
             // This trigger is used as a sanity check to verify that we are properly aligned with the transmitter.
-            var rxPresent = createTrigger<VRCContactReceiver>(obj, parameters, "$TXPresent");
+            var rxPresent = createTrigger<VRCContactReceiver>(obj, "$TXPresent");
             var rxTrigger = rxPresent.GetComponent<VRCContactReceiver>();
             rxTrigger.allowSelf = false;
             rxTrigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
-            rxTrigger.parameter = parameters.Names.ParamTxProximity;
+            rxTrigger.parameter = _names.ParamTxProximity;
 
-            var txLocal = createTrigger<VRCContactReceiver>(obj, parameters, "$TXLocal");
+            var txLocal = createTrigger<VRCContactReceiver>(obj, "$TXLocal");
             var localTrigger = txLocal.GetComponent<VRCContactReceiver>();
             txLocal.transform.localPosition = -(Vector3.forward * rxTrigger.radius);
             localTrigger.allowSelf = false;
             localTrigger.receiverType = VRCContactReceiver.ReceiverType.Constant;
-            localTrigger.parameter = parameters.Names.ParamTxLocal;
+            localTrigger.parameter = _names.ParamTxLocal;
             localTrigger.collisionTags = new List<string>(rxTrigger.collisionTags);
             
-            foreach (var param in parameters.avrcParams)
+            foreach (var param in _parameters.avrcParams)
             {
-                createReceiver(obj, parameters, param);
+                createReceiver(obj, param);
             }
 
             return obj;
         }
 
-        internal static GameObject buildTransmitterBase(
+        internal GameObject buildTransmitterBase(
             GameObject parent,
-            string name,
-            AvrcParameters parameters
+            string name
         ) {
-            var obj = buildConstraintBase(parent, name, parameters);
+            var obj = buildConstraintBase(parent, name, _parameters);
 
-            var rxPresent = createTrigger<VRCContactReceiver>(obj, parameters, "$RXPresent");
+            var rxPresent = createTrigger<VRCContactReceiver>(obj, "$RXPresent");
             var trigger = rxPresent.GetComponent<VRCContactReceiver>();
             trigger.allowSelf = false;
             trigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
-            trigger.parameter = parameters.Names.ParamRxPresent;
+            trigger.parameter = _names.ParamRxPresent;
             var rxPresentMask = trigger.collisionTags;
 
-            createTrigger<VRCContactSender>(obj, parameters, "$TXPresent", staticPresence: true);
+            createTrigger<VRCContactSender>(obj, "$TXPresent", staticPresence: true);
 
-            var rxLocal = createTrigger<VRCContactReceiver>(obj, parameters, "$RXLocal");
+            var rxLocal = createTrigger<VRCContactReceiver>(obj, "$RXLocal");
             trigger = rxLocal.GetComponent<VRCContactReceiver>();
             rxLocal.transform.localPosition = -(Vector3.forward * trigger.radius);
             trigger.allowSelf = false;
             trigger.receiverType = VRCContactReceiver.ReceiverType.Constant;
-            trigger.parameter = parameters.Names.ParamRxLocal;
+            trigger.parameter = _names.ParamRxLocal;
             trigger.collisionTags = new List<string>(rxPresentMask);
 
-            foreach (var param in parameters.avrcParams)
+            foreach (var param in _parameters.avrcParams)
             {
                 // IsLocal parameters are implicitly transmitted using the presence test trigger
                 if (param.type == AvrcParameters.AvrcParameterType.IsLocal) continue;
 
-                var triggerObj = createTrigger<VRCContactSender>(obj, parameters, param.name);
+                var triggerObj = createTrigger<VRCContactSender>(obj, param.name);
                 triggerObj.SetActive(param.type == AvrcParameters.AvrcParameterType.Float);
 
                 if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
@@ -220,7 +228,7 @@ namespace net.fushizen.avrc
                     triggerObj.GetComponent<VRCContactSender>().position = new Vector3(0, 0, 0);
                     
                     // Create ACK receiver
-                    triggerObj = createTrigger<VRCContactReceiver>(obj, parameters, $"{param.name}_ACK");
+                    triggerObj = createTrigger<VRCContactReceiver>(obj, $"{param.name}_ACK");
                     triggerObj.SetActive(false);
                     trigger = triggerObj.GetComponent<VRCContactReceiver>();
                     trigger.allowSelf = false;

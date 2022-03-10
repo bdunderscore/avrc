@@ -11,14 +11,14 @@ namespace net.fushizen.avrc
     {
         public static bool HasAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters = null)
         {
-            var names = parameters?.Names;
+            var names = parameters != null ? new AvrcNames(parameters) : null;
             var fx = AvrcAnimatorUtils.FindFxLayer(avatarDescriptor);
 
-            if (names.HasValue)
+            if (names != null)
             {
-                return avatarDescriptor.transform.Find(names.Value.ObjectPath) != null
+                return avatarDescriptor.transform.Find(names.ObjectPath) != null
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
-                            .Any(layer => layer.name.StartsWith(names.Value.LayerPrefix));
+                            .Any(layer => layer.name.StartsWith(names.LayerPrefix));
             }
             else
             {
@@ -30,14 +30,14 @@ namespace net.fushizen.avrc
 
         public static void RemoveAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters = null)
         {
-            var names = parameters?.Names;
+            var names = parameters != null ? new AvrcNames(parameters) : null;
             var fx = AvrcAnimatorUtils.FindFxLayer(avatarDescriptor);
             var scene = avatarDescriptor.gameObject.scene;
 
-            var layerPrefix = names.HasValue ? names.Value.LayerPrefix : "_AVRC_";
+            var layerPrefix = names?.LayerPrefix ?? "_AVRC_";
             
             // Purge objects
-            var objectRootName = parameters != null ? parameters.Names.ObjectPath : "AVRC";
+            var objectRootName = parameters != null ? names.ObjectPath : "AVRC";
 
             var paramsObjectRoot = avatarDescriptor.transform.Find(objectRootName);
 

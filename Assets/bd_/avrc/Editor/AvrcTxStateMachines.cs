@@ -20,15 +20,15 @@ namespace net.fushizen.avrc
     {
         private readonly VRCAvatarDescriptor m_avatarDescriptor;
         
-        private AvrcTxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
-            : base(avatarDescriptor, parameters)
+        private AvrcTxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
+            : base(avatarDescriptor, parameters, names)
         {
             m_avatarDescriptor = avatarDescriptor;
         }
 
         public static void SetupTx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
         {
-            new AvrcTxStateMachines(avatarDescriptor, parameters).Setup();
+            new AvrcTxStateMachines(avatarDescriptor, parameters, new AvrcNames(parameters)).Setup();
 
         }
         
@@ -38,21 +38,21 @@ namespace net.fushizen.avrc
             AddOrReplaceLayer(Names.LayerSetup, TransmitterSetupLayer());
             AddOrReplaceLayer(Names.LayerTxEnable, TransmitterEnableStateMachine());
 
-            foreach (var param in m_parameters.avrcParams)
+            foreach (var param in Parameters.avrcParams)
             {
                 CreateParameterLayer(param);
             }
 
-            AvrcAnimatorUtils.GarbageCollectAnimatorAsset(m_animatorController);
-            EditorUtility.SetDirty(m_animatorController);
+            AvrcAnimatorUtils.GarbageCollectAnimatorAsset(AnimatorController);
+            EditorUtility.SetDirty(AnimatorController);
         }
 
         private AnimatorStateMachine TransmitterSetupLayer()
         {
             return CommonSetupLayer(
-                m_parameters.Names.Prefix + "_EnableTX_", 
+                Names.Prefix + "_EnableTX_", 
                 Names.ParamRxLocal,
-                AvrcAnimations.TransmitterPresentClip
+                Animations.TransmitterPresentClip
             );
         }
 
@@ -74,7 +74,7 @@ namespace net.fushizen.avrc
             List<VRCExpressionParameters.Parameter> parameters
                 = new List<VRCExpressionParameters.Parameter>(m_avatarDescriptor.expressionParameters.parameters);
 
-            foreach (var param in m_parameters.avrcParams)
+            foreach (var param in Parameters.avrcParams)
             {
                 if (param.type != AvrcParameters.AvrcParameterType.BidiInt) continue;
                 var parameterName = param.TxParameterFlag(Names);
@@ -157,13 +157,13 @@ namespace net.fushizen.avrc
             var st_false = rootStateMachine.AddState("False");
 
             entry.motion = AvrcAssets.EmptyClip();
-            st_true.motion = AvrcAnimations.Named(
-                m_parameters.Names.Prefix + "_" + parameter.name + "_True",
-                () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset, 1)
+            st_true.motion = Animations.Named(
+                Names.Prefix + "_" + parameter.name + "_True",
+                () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset, 1)
             );
-            st_false.motion = AvrcAnimations.Named(
-                m_parameters.Names.Prefix + "_" + parameter.name + "_False",
-                () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset, -1)
+            st_false.motion = Animations.Named(
+                Names.Prefix + "_" + parameter.name + "_False",
+                () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset, -1)
             );
 
             var transition = rootStateMachine.AddAnyStateTransition(st_true);
@@ -187,9 +187,9 @@ namespace net.fushizen.avrc
             AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
             var entry = rootStateMachine.AddState("Entry");
 
-            entry.motion = AvrcAnimations.Named(
-                m_parameters.Names.Prefix + "_" + parameter.name,
-                () => AvrcAnimations.LinearClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset)
+            entry.motion = Animations.Named(
+                Names.Prefix + "_" + parameter.name,
+                () => Animations.LinearClip(Names.ParameterPath(parameter), Parameters.baseOffset)
             );
 
             entry.timeParameterActive = true;
@@ -208,9 +208,9 @@ namespace net.fushizen.avrc
             for (int i = 0; i < states.Length; i++)
             {
                 states[i] = rootStateMachine.AddState(parameter.name + "_" + i);
-                states[i].motion = AvrcAnimations.Named(
-                    m_parameters.Names.Prefix + "_" + parameter.name + "_" + i,
-                    () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset,
+                states[i].motion = Animations.Named(
+                    Names.Prefix + "_" + parameter.name + "_" + i,
+                    () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset,
                         perState * (i + 1))
                 );
 
@@ -228,9 +228,9 @@ namespace net.fushizen.avrc
 
         protected override AnimatorStateMachine BidiIntParamLayer(AvrcParameters.AvrcParameter parameter)
         {
-            var idleMotion = AvrcAnimations.Named(
-                m_parameters.Names.Prefix + "_" + parameter.name + "_Idle",
-                () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset, -1)
+            var idleMotion = Animations.Named(
+                Names.Prefix + "_" + parameter.name + "_Idle",
+                () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset, -1)
             );
             
             AnimatorStateMachine stateMachine = new AnimatorStateMachine();
@@ -285,9 +285,9 @@ namespace net.fushizen.avrc
                 activeStates[i] = stateMachine.AddState($"Active[{lo + i}]");
                 activeStates[i].motion = idleMotion;
                 triggerStates[i] = stateMachine.AddState($"Trigger[{lo + i}]");
-                triggerStates[i].motion = AvrcAnimations.Named(
+                triggerStates[i].motion = Animations.Named(
                     $"{Names.Prefix}_{parameter.name}_{i}",
-                    () => AvrcAnimations.ConstantClip(m_parameters.Names.ParameterPath(parameter), m_parameters.baseOffset, perState * (i + 1))
+                    () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset, perState * (i + 1))
                 );
 
                 activeStates[i].behaviours = new StateMachineBehaviour[]

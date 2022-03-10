@@ -16,25 +16,29 @@ namespace net.fushizen.avrc
         protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
         protected const float MaxPresenceTestValue = AvrcObjects.PresenceTestValue + EPSILON;
         
-        protected readonly AvrcParameters m_parameters;
-        protected readonly AnimatorController m_animatorController;
-        protected readonly AvrcParameters.AvrcNames Names;
+        protected readonly AvrcParameters Parameters;
+        protected readonly AnimatorController AnimatorController;
+        protected readonly AvrcNames Names;
+        protected readonly AvrcAnimations Animations;
+        protected readonly AvrcObjects Objects;
 
-        protected AvrcLayerSetupCommon(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
+        protected AvrcLayerSetupCommon(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
         {
-            Names = parameters.Names;
+            Names = names;
+            Animations = new AvrcAnimations(parameters, Names);
+            Objects = new AvrcObjects(parameters, Names);
             
-            this.m_parameters = parameters;
+            this.Parameters = parameters;
             foreach (var c in avatarDescriptor.baseAnimationLayers)
             {
                 if (c.type == VRCAvatarDescriptor.AnimLayerType.FX)
                 {
-                    m_animatorController = (AnimatorController)c.animatorController;
+                    AnimatorController = (AnimatorController)c.animatorController;
                     break;
                 }
             }
 
-            if (m_animatorController == null)
+            if (AnimatorController == null)
             {
                 throw new ArgumentException("FX layer is required");
             }
@@ -49,7 +53,7 @@ namespace net.fushizen.avrc
         
         protected void AddParameter(string name, AnimatorControllerParameterType ty)
         {
-            foreach (var param in m_animatorController.parameters)
+            foreach (var param in AnimatorController.parameters)
             {
                 if (param.name == name)
                 {
@@ -63,7 +67,7 @@ namespace net.fushizen.avrc
                 }
             }
             
-            m_animatorController.AddParameter(name, ty);
+            AnimatorController.AddParameter(name, ty);
         }
 
         protected void CreateParameterLayer(AvrcParameters.AvrcParameter parameter)
@@ -92,21 +96,21 @@ namespace net.fushizen.avrc
 
             if (animatorStateMachine != null)
             {
-                AddOrReplaceLayer(m_parameters.Names.ParameterLayerName(parameter), animatorStateMachine);
+                AddOrReplaceLayer(Names.ParameterLayerName(parameter), animatorStateMachine);
             }
             else
             {
-                RemoveLayer(m_parameters.Names.ParameterLayerName(parameter));
+                RemoveLayer(Names.ParameterLayerName(parameter));
             }
         }
 
         protected void RemoveLayer(string layerName)
         {
-            var newLayers = m_animatorController.layers
+            var newLayers = AnimatorController.layers
                 .Where(layer => !layer.name.Equals(layerName))
                 .ToArray();
 
-            m_animatorController.layers = newLayers;
+            AnimatorController.layers = newLayers;
         }
 
         protected void AddOrReplaceLayer(string layerName, AnimatorStateMachine animatorStateMachine)
@@ -114,7 +118,7 @@ namespace net.fushizen.avrc
             animatorStateMachine.name = layerName;
             
             bool newLayer = true;
-            var layers = m_animatorController.layers;
+            var layers = AnimatorController.layers;
             foreach (var t in layers)
             {
                 if (t.name == layerName)
@@ -125,7 +129,7 @@ namespace net.fushizen.avrc
                     }
 
                     t.stateMachine = animatorStateMachine;
-                    m_animatorController.layers = layers;
+                    AnimatorController.layers = layers;
                     newLayer = false;
                     break;
                 }
@@ -140,12 +144,12 @@ namespace net.fushizen.avrc
                     stateMachine = animatorStateMachine
                 };
 
-                m_animatorController.AddLayer(layer);
+                AnimatorController.AddLayer(layer);
             }
 
-            if (AssetDatabase.GetAssetPath(m_animatorController) != "")
+            if (AssetDatabase.GetAssetPath(AnimatorController) != "")
             {
-                var assets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(m_animatorController));
+                var assets = AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(AnimatorController));
 
                 foreach (var asset in assets)
                 {
@@ -155,7 +159,7 @@ namespace net.fushizen.avrc
                     }
                 }
                 
-                AssetDatabase.AddObjectToAsset(animatorStateMachine, AssetDatabase.GetAssetPath(m_animatorController));
+                AssetDatabase.AddObjectToAsset(animatorStateMachine, AssetDatabase.GetAssetPath(AnimatorController));
             }
             
             // animatorStateMachine.hideFlags = HideFlags.HideInHierarchy;
@@ -184,12 +188,12 @@ namespace net.fushizen.avrc
                 }
             };
             
-            AssetDatabase.AddObjectToAsset(driver, m_animatorController);
+            AssetDatabase.AddObjectToAsset(driver, AnimatorController);
 
             return driver;
         }
         
-        protected delegate AnimationClip ClipCreator(AvrcParameters parameters, AvrcAnimations.LocalState local);
+        protected delegate AnimationClip ClipCreator(AvrcAnimations.LocalState local);
 
         /// <summary>
         /// This state machine enables the main constraint, and adjusts bounds when it is running on the peer's
@@ -204,24 +208,24 @@ namespace net.fushizen.avrc
             AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
 
             var init = rootStateMachine.AddState("Init");
-            init.motion = AvrcAnimations.Named(
+            init.motion = Animations.Named(
                 animPrefix + "Init",
-                () => clipCreator(m_parameters, AvrcAnimations.LocalState.Unknown)
+                () => clipCreator(AvrcAnimations.LocalState.Unknown)
             );
 
             var ownerLocal = rootStateMachine.AddState("OwnerLocal");
-            ownerLocal.motion = AvrcAnimations.Named(
+            ownerLocal.motion = Animations.Named(
                 animPrefix + "OwnerLocal",
-                () => clipCreator(m_parameters, AvrcAnimations.LocalState.OwnerLocal)
+                () => clipCreator(AvrcAnimations.LocalState.OwnerLocal)
             );
             var t = AddInstantTransition(init, ownerLocal);
             AddIsLocalCondition(t);
             // OwnerLocal is a terminal state.
             
             var peerLocal = rootStateMachine.AddState("PeerLocal");
-            peerLocal.motion = AvrcAnimations.Named(
+            peerLocal.motion = Animations.Named(
                 animPrefix + "PeerLocal",
-                () => clipCreator(m_parameters, AvrcAnimations.LocalState.PeerLocal)
+                () => clipCreator(AvrcAnimations.LocalState.PeerLocal)
             );
             t = AddInstantTransition(init, peerLocal);
             AddParameter(recvPeerLocal, AnimatorControllerParameterType.Float);

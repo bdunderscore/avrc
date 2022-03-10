@@ -15,7 +15,16 @@ namespace net.fushizen.avrc
             PeerLocal
         }
 
-        internal static AnimationClip Named(string name, GetClipDelegate d)
+        private readonly AvrcParameters _parameters;
+        private readonly AvrcNames _names;
+
+        public AvrcAnimations(AvrcParameters parameters, AvrcNames names)
+        {
+            this._parameters = parameters;
+            this._names = names;
+        }
+
+        internal AnimationClip Named(string name, GetClipDelegate d)
         {
             var clip = d();
             clip.name = name;
@@ -30,7 +39,7 @@ namespace net.fushizen.avrc
             */
         }
         
-        internal static AnimationClip LinearClip(string path, Vector3 baseOffset)
+        internal AnimationClip LinearClip(string path, Vector3 baseOffset)
         {
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x", 
@@ -46,7 +55,7 @@ namespace net.fushizen.avrc
             return clip;
         }
 
-        internal static AnimationClip ConstantClip(string path, Vector3 baseOffset, float value)
+        internal AnimationClip ConstantClip(string path, Vector3 baseOffset, float value)
         {
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x", 
@@ -59,14 +68,9 @@ namespace net.fushizen.avrc
             return clip;
         }
 
-        internal static AnimationClip EnableConstraintClip(
-            AvrcParameters parameters,
-            string path,
-            LocalState local,
-            string sendingSelfPresent,
-            string receivingPeerLocal
-        )
+        internal AnimationClip EnableConstraintClip(LocalState local, string sendingSelfPresent)
         {
+            var path = _names.ObjectPath;
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(ParentConstraint), "m_Active", AnimationCurve.Constant(0, 1, 1));
 
@@ -92,18 +96,18 @@ namespace net.fushizen.avrc
                     AnimationCurve.Constant(0, 1, BOUNDS_SIZE));
             }
             
-            foreach (var param in parameters.avrcParams)
+            foreach (var param in _parameters.avrcParams)
             {
                 int isActive = local != LocalState.Unknown ? 1 : 0;
                 
                 clip.SetCurve(
-                    parameters.Names.ParameterPath(param), typeof(GameObject), "m_IsActive",
+                    _names.ParameterPath(param), typeof(GameObject), "m_IsActive",
                     AnimationCurve.Constant(0, 1, isActive));
 
                 if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
                 {
                     clip.SetCurve(
-                        parameters.Names.ParameterPath(param) + "_ACK", typeof(GameObject), "m_IsActive",
+                        _names.ParameterPath(param) + "_ACK", typeof(GameObject), "m_IsActive",
                         AnimationCurve.Constant(0, 1, isActive));
                 }
             }
@@ -120,14 +124,14 @@ namespace net.fushizen.avrc
         /// </summary>
         /// <param name="parameters"></param>
         /// <returns></returns>
-        internal static AnimationClip ReceiverPresentClip(AvrcParameters parameters, LocalState local)
+        internal AnimationClip ReceiverPresentClip(LocalState local)
         {
-            return EnableConstraintClip(parameters, parameters.Names.ObjectPath, local, parameters.Names.ObjRxPresent, parameters.Names.ObjTxLocal);
+            return EnableConstraintClip(local, _names.ObjRxPresent);
         }
 
-        internal static AnimationClip TransmitterPresentClip(AvrcParameters parameters, LocalState local)
+        internal AnimationClip TransmitterPresentClip(LocalState local)
         {
-            return EnableConstraintClip(parameters, parameters.Names.ObjectPath, local, parameters.Names.ObjTxPresent, parameters.Names.ObjRxLocal);
+            return EnableConstraintClip(local, _names.ObjTxPresent);
         }
     }
 }
