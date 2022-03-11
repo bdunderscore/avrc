@@ -138,6 +138,7 @@ namespace net.fushizen.avrc
             r.width = width;
             r.x += padBefore;
             rect.x += width + padBefore + padAfter;
+            rect.width -= width + padBefore + padAfter;
 
             return r;
         }
@@ -189,7 +190,7 @@ namespace net.fushizen.avrc
             SerializedProperty element = _paramsProp.GetArrayElementAtIndex(index);
 
             if (element == null) return;
-
+            
             rect.y += 2;
             rect.height = EditorGUIUtility.singleLineHeight;
 
@@ -198,49 +199,13 @@ namespace net.fushizen.avrc
                 element.FindPropertyRelative("type"),
                 GUIContent.none
             );
-
-            var propName = element.FindPropertyRelative("name");
-            if (ElementType(element) != AvrcParameterType.IsLocal)
-            {
-                EditorGUI.PropertyField(
-                    AdvanceRect(ref rect, 100),
-                    propName,
-                    GUIContent.none
-                );                
-            }
-            else {
-                rect.x += 100;
-            }
             
-
-            RenderLabel(ref rect, L.AP_RX_PARAM, padBefore: 20, padAfter: 10);
-
-            var rxNameRect = AdvanceRect(ref rect, 100);
-            var propRxName = element.FindPropertyRelative("rxName");
+            var propName = element.FindPropertyRelative("name");
             EditorGUI.PropertyField(
-                rxNameRect,
-                propRxName,
+                AdvanceRect(ref rect, rect.width),
+                propName,
                 GUIContent.none
             );
-
-            if (ElementType(element) == AvrcParameterType.IsLocal)
-            {
-                propName.stringValue = propRxName.stringValue;
-            }
-
-            if (element.FindPropertyRelative("rxName").stringValue.Equals(""))
-            {
-                GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontStyle = FontStyle.Italic,
-                    normal = { textColor = Color.gray}
-                };
-                EditorGUI.LabelField(
-                    rxNameRect,
-                    element.FindPropertyRelative("name").stringValue,
-                    labelStyle
-                );
-            }
 
             if (ElementHasRangeProp(element))
             {

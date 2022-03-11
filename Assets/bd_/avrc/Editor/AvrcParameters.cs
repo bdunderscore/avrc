@@ -48,7 +48,6 @@ namespace net.fushizen.avrc
             public string name;
             public AvrcParameterType type;
             public float timeoutSeconds;
-            [CanBeNull] public string rxName;
             public int minVal, maxVal;
 
             internal string TxParameterFlag(AvrcNames names)

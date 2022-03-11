@@ -47,10 +47,10 @@ namespace net.fushizen.avrc
             var stateMachine = new AnimatorStateMachine();
 
             var init = stateMachine.AddState("Init");
-            AddParameter(parameter.rxName, AnimatorControllerParameterType.Bool);
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
             init.behaviours = new StateMachineBehaviour[]
             {
-                ParameterDriver(parameter.rxName, 0, false)
+                ParameterDriver(Names.UserParameter(parameter), 0, false)
             };
             init.motion = AvrcAssets.EmptyClip();
 
@@ -58,7 +58,7 @@ namespace net.fushizen.avrc
             local.motion = init.motion;
             local.behaviours = new StateMachineBehaviour[]
             {
-                ParameterDriver(parameter.rxName, 1, false)
+                ParameterDriver(Names.UserParameter(parameter), 1, false)
             };
 
             var timeout = stateMachine.AddState("Timeout");
