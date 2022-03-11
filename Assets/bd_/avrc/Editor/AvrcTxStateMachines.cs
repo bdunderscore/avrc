@@ -26,9 +26,9 @@ namespace net.fushizen.avrc
             m_avatarDescriptor = avatarDescriptor;
         }
 
-        public static void SetupTx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
+        public static void SetupTx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
         {
-            new AvrcTxStateMachines(avatarDescriptor, parameters, new AvrcNames(parameters)).Setup();
+            new AvrcTxStateMachines(avatarDescriptor, parameters, names).Setup();
 
         }
         
@@ -170,14 +170,14 @@ namespace net.fushizen.avrc
             transition.duration = 0;
             transition.hasExitTime = false;
             transition.canTransitionToSelf = false;
-            AddParameter(parameter.name, AnimatorControllerParameterType.Bool);
-            transition.AddCondition(AnimatorConditionMode.If, 1, parameter.name);
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
+            transition.AddCondition(AnimatorConditionMode.If, 1, Names.UserParameter(parameter));
             
             transition = rootStateMachine.AddAnyStateTransition(st_false);
             transition.duration = 0;
             transition.hasExitTime = false;
             transition.canTransitionToSelf = false;
-            transition.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.name);
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.UserParameter(parameter));
 
             return rootStateMachine;
         }
@@ -193,8 +193,8 @@ namespace net.fushizen.avrc
             );
 
             entry.timeParameterActive = true;
-            entry.timeParameter = parameter.name;
-            AddParameter(parameter.name, AnimatorControllerParameterType.Float);
+            entry.timeParameter = Names.UserParameter(parameter);
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Float);
             
             return rootStateMachine;
         }
@@ -217,11 +217,11 @@ namespace net.fushizen.avrc
                 var transition = rootStateMachine.AddAnyStateTransition(states[i]);
                 transition.duration = 0;
                 transition.hasExitTime = false;
-                transition.AddCondition(AnimatorConditionMode.Equals, i + parameter.minVal, parameter.name);
+                transition.AddCondition(AnimatorConditionMode.Equals, i + parameter.minVal, Names.UserParameter(parameter));
                 transition.canTransitionToSelf = false;
             }
             
-            AddParameter(parameter.name, AnimatorControllerParameterType.Int);
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
 
             return rootStateMachine;
         }
@@ -296,14 +296,14 @@ namespace net.fushizen.avrc
                 t = AddInstantTransition(triggerStates[i], disconnected);
                 t.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
                 t = AddInstantTransition(triggerStates[i], disconnected);
-                t.AddCondition(AnimatorConditionMode.NotEqual, i + lo, parameter.name);
+                t.AddCondition(AnimatorConditionMode.NotEqual, i + lo, Names.UserParameter(parameter));
                 t = AddInstantTransition(triggerEntry, triggerStates[i]);
                 t.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
-                t.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
+                t.AddCondition(AnimatorConditionMode.Equals, i + lo, Names.UserParameter(parameter));
             }
             
-            AddParameter(parameter.name, AnimatorControllerParameterType.Int);
-            var ackParam = parameter.name + "_ACK";
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
+            var ackParam = Names.InternalParameter(parameter, "ACK");
             AddParameter(ackParam, AnimatorControllerParameterType.Float);
 
             for (int i = 0; i < passiveStates.Length; i++)
@@ -314,7 +314,7 @@ namespace net.fushizen.avrc
                 // Write TX variable on entering passive state
                 passiveStates[i].behaviours = new StateMachineBehaviour[]
                 {
-                    ParameterDriver(parameter.name, i + lo),
+                    ParameterDriver(Names.UserParameter(parameter), i + lo),
                     ParameterDriver(parameter.TxParameterFlag(Names), 0),
                 };
 
@@ -326,12 +326,12 @@ namespace net.fushizen.avrc
                 
                 // Exit from passive to rx when ack value changes
                 transition = AddInstantTransition(passiveStates[i], rx);
-                transition.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
+                transition.AddCondition(AnimatorConditionMode.Equals, i + lo, Names.UserParameter(parameter));
                 transition.AddCondition(AnimatorConditionMode.Greater, rxRangeHi, ackParam);
                 AddPresenceCondition(transition, Names.ParamRxPresent);
                 
                 transition = AddInstantTransition(passiveStates[i], rx);
-                transition.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
+                transition.AddCondition(AnimatorConditionMode.Equals, i + lo, Names.UserParameter(parameter));
                 transition.AddCondition(AnimatorConditionMode.Less, rxRangeLow, ackParam);
                 AddPresenceCondition(transition, Names.ParamRxPresent);
                 
@@ -340,12 +340,12 @@ namespace net.fushizen.avrc
                 transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
                 transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
                 AddPresenceCondition(transition, Names.ParamRxPresent);
-                transition.AddCondition(AnimatorConditionMode.NotEqual, i + lo, parameter.name);
+                transition.AddCondition(AnimatorConditionMode.NotEqual, i + lo, Names.UserParameter(parameter));
                 
                 // TX to active transition
                 transition = AddInstantTransition(tx, activeStates[i]);
                 AddPresenceCondition(transition, Names.ParamRxPresent);
-                transition.AddCondition(AnimatorConditionMode.Equals, i + lo, parameter.name);
+                transition.AddCondition(AnimatorConditionMode.Equals, i + lo, Names.UserParameter(parameter));
 
                 // Exit from active state when acknowledged
                 transition = AddInstantTransition(activeStates[i], passiveStates[i]);

@@ -17,9 +17,9 @@ namespace net.fushizen.avrc
         {
         }
 
-        public static void SetupRx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters)
+        public static void SetupRx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
         {
-            new AvrcRxStateMachines(avatarDescriptor, parameters, new AvrcNames(parameters)).Setup();
+            new AvrcRxStateMachines(avatarDescriptor, parameters, names).Setup();
         }
         
         private void Setup() {
@@ -93,17 +93,17 @@ namespace net.fushizen.avrc
         {
             var stateMachine = new AnimatorStateMachine();
 
-            var conditionParamName = $"{parameter.name}_F";
+            var conditionParamName = Names.InternalParameter(parameter);
             AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
-            AddParameter(parameter.RxParameterName, AnimatorControllerParameterType.Bool);
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
 
             var s_false = stateMachine.AddState("False");
-            s_false.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.RxParameterName, 0, localOnly: localOnly)};
+            s_false.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.UserParameter(parameter), 0, localOnly: localOnly)};
             s_false.motion = AvrcAssets.EmptyClip();
 
             var s_true = stateMachine.AddState("True");
-            s_true.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.RxParameterName, 1, localOnly: localOnly)};
+            s_true.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.UserParameter(parameter), 1, localOnly: localOnly)};
             s_true.motion = AvrcAssets.EmptyClip();
 
             var t = stateMachine.AddAnyStateTransition(s_true);
@@ -130,9 +130,9 @@ namespace net.fushizen.avrc
             var states = new AnimatorState[parameter.maxVal - parameter.minVal + 1];
             var perState = 1.0f / (states.Length + 1);
 
-            var conditionParamName = $"{parameter.name}_F";
+            var conditionParamName = Names.InternalParameter(parameter);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
-            AddParameter(parameter.RxParameterName, AnimatorControllerParameterType.Int);
+            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
             AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
 
             var remoteDriven = new AnimatorState[states.Length];
@@ -145,7 +145,7 @@ namespace net.fushizen.avrc
                 states[i] = stateMachine.AddState($"Passive_{parameter.name}_{i}");
                 remoteDriven[i] = stateMachine.AddState($"RemoteDriven_{parameter.name}_{i}");
 
-                remoteDriven[i].behaviours = new StateMachineBehaviour[] { ParameterDriver(parameter.RxParameterName, i) };
+                remoteDriven[i].behaviours = new StateMachineBehaviour[] { ParameterDriver(Names.UserParameter(parameter), i) };
                 states[i].motion = AvrcAssets.EmptyClip();
                 remoteDriven[i].motion = AvrcAssets.EmptyClip();
 
@@ -162,7 +162,7 @@ namespace net.fushizen.avrc
                 var transition = stateMachine.AddAnyStateTransition(states[i]);
                 transition.duration = 0;
                 transition.hasExitTime = false;
-                transition.AddCondition(AnimatorConditionMode.Equals, i + parameter.minVal, parameter.RxParameterName);
+                transition.AddCondition(AnimatorConditionMode.Equals, i + parameter.minVal, Names.UserParameter(parameter));
                 transition.AddCondition(AnimatorConditionMode.Less, perState / 2, conditionParamName);
                 transition.canTransitionToSelf = false;
 

@@ -51,11 +51,9 @@ namespace net.fushizen.avrc
             [CanBeNull] public string rxName;
             public int minVal, maxVal;
 
-            public string RxParameterName => !string.IsNullOrEmpty(rxName) ? rxName : name;
-
             internal string TxParameterFlag(AvrcNames names)
             {
-                return $"_AVRC_{names.Prefix}_tx_{name}";
+                return $"_AVRC_internal_{names.Prefix}_tx_{name}";
             }
         }
     }

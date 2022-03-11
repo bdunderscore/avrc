@@ -25,11 +25,11 @@ namespace net.fushizen.avrc
         internal string LayerRxConstraint => $"{LayerPrefix}_RXConstraint";
         internal string LayerTxEnable => $"{LayerPrefix}_TXEnable";
             
-        internal string ParamRxPresent => $"_AVRC_Internal_{Prefix}_RxPresent";
-        internal string ParamTxProximity => $"_AVRC_Internal_{Prefix}_TxProximity";
-        internal string ParamTxActive => $"_AVRC_Internal_{Prefix}_TxActive";
-        internal string ParamRxLocal => $"_AVRC_Internal_{Prefix}_RxLocal";
-        internal string ParamTxLocal => $"_AVRC_Internal_{Prefix}_TxLocal";
+        internal string ParamRxPresent => $"_AVRCI_{Prefix}_RxPresent";
+        internal string ParamTxProximity => $"_AVRCI_{Prefix}_TxProximity";
+        internal string ParamTxActive => $"_AVRCI_{Prefix}_TxActive";
+        internal string ParamRxLocal => $"_AVRCI_{Prefix}_RxLocal";
+        internal string ParamTxLocal => $"_AVRCI_{Prefix}_TxLocal";
 
         internal string ObjTxPresent => ObjectPath + "/$TXPresent";
         internal string ObjTxLocal => ObjectPath + "/$TXLocal";
@@ -39,6 +39,16 @@ namespace net.fushizen.avrc
         internal string ParameterPath(AvrcParameters.AvrcParameter parameter)
         {
             return $"{ObjectPath}/{parameter.name}";
+        }
+
+        internal string UserParameter(AvrcParameters.AvrcParameter parameter)
+        {
+            return ParameterMap[parameter.name];
+        }
+        
+        internal string InternalParameter(AvrcParameters.AvrcParameter parameter, string suffix = "")
+        {
+            return $"_AVRCI_{Prefix}_{parameter.name}$" + suffix;
         }
 
         public string ParameterLayerName(AvrcParameters.AvrcParameter parameter)

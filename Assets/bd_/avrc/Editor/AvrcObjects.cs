@@ -125,26 +125,26 @@ namespace net.fushizen.avrc
             switch (parameter.type)
             {
                 case AvrcParameters.AvrcParameterType.Float:
-                    trigger.parameter = parameter.RxParameterName;
+                    trigger.parameter = _names.UserParameter(parameter);
                     trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
                     triggerObj.SetActive(true);
                     break;
                 case AvrcParameters.AvrcParameterType.IsLocal:
-                    trigger.parameter = $"{parameter.name}_F";
+                    trigger.parameter = _names.InternalParameter(parameter);
                     trigger.receiverType = ContactReceiver.ReceiverType.Constant;
                     trigger.value = 1;
                     break;
                 case AvrcParameters.AvrcParameterType.Bool:
-                    trigger.parameter = $"{parameter.name}_F";
+                    trigger.parameter = _names.InternalParameter(parameter);
                     trigger.receiverType = ContactReceiver.ReceiverType.Constant;
                     trigger.value = 1;
                     break;
                 case AvrcParameters.AvrcParameterType.Int:
-                    trigger.parameter = $"{parameter.name}_F";
+                    trigger.parameter = _names.InternalParameter(parameter);
                     trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
                     break;
                 case AvrcParameters.AvrcParameterType.BidiInt:
-                    trigger.parameter = $"{parameter.name}_F";
+                    trigger.parameter = _names.InternalParameter(parameter);
                     trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
                     trigger.position = new Vector3(0, 0, 0);
                     
@@ -232,7 +232,7 @@ namespace net.fushizen.avrc
                     triggerObj.SetActive(false);
                     trigger = triggerObj.GetComponent<VRCContactReceiver>();
                     trigger.allowSelf = false;
-                    trigger.parameter = $"{param.name}_ACK";
+                    trigger.parameter = _names.InternalParameter(param, "ACK");
                     trigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
                     trigger.position = new Vector3(0, 0, 0);
                     break;
