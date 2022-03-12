@@ -20,11 +20,11 @@ namespace net.fushizen.avrc
         [Serializable]
         public enum Role
         {
-            TX, RX
+            Init, TX, RX
         }
         
         public List<ParameterMapping> parameterMappings = new List<ParameterMapping>();
-        public Role role = Role.RX;
+        public Role role = Role.Init;
     }
 
     [CustomEditor(typeof(AvrcSavedState))]
@@ -91,6 +91,7 @@ namespace net.fushizen.avrc
             }
             
             EditorUtility.CopySerialized(state, existingState);
+            existingState.hideFlags = HideFlags.HideInInspector;
             EditorUtility.SetDirty(existingState);
         }
     }

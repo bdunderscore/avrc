@@ -68,7 +68,9 @@ namespace net.fushizen.avrc
             }
 
             // ReSharper disable once HeapView.BoxingAllocation
-            _role = (AvrcSavedState.Role)EditorGUILayout.EnumPopup("Role", _role);
+            _role = (AvrcSavedState.Role)EditorGUILayout.Popup("Role", (int)_role, 
+                new string[] { "", "TX", "RX" }
+            );
 
             if (_role != AvrcSavedState.Role.RX)
             {
@@ -316,10 +318,14 @@ namespace net.fushizen.avrc
         {
             _remapList = null;
 
-            if (_params == null || _targetAvatar == null) return;
-
+            if (_params == null || _targetAvatar == null)
+            {
+                _role = AvrcSavedState.Role.Init;
+            }
+            
             _cachedNames = new AvrcNames(_params);
             _savedstate = AvrcStateSaver.LoadState(_cachedNames, _targetAvatar);
+            if (_role == AvrcSavedState.Role.Init) _role = _savedstate.role;
             ApplyNameOverrides();
 
             _remapObject = new SerializedObject(_savedstate);
