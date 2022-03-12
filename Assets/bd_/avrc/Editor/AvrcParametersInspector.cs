@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using PlasticGui.WorkspaceWindow.Items;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -104,32 +105,34 @@ namespace net.fushizen.avrc
 
         private static bool ElementHasRangeProp(SerializedProperty elem)
         {
-            var tyName = ElementType(elem);
+            var tyName = GetEnumProp<AvrcParameterType>(nameof(AvrcParameter.type), elem);
 
-            var hasRange = tyName == AvrcParameterType.Int || tyName == AvrcParameterType.BidiInt;
+            var hasRange = tyName == AvrcParameterType.Int;
             return hasRange;
         }
 
-        private static AvrcParameterType? ElementType(SerializedProperty elem)
+        private static bool ElementIsIntLike(SerializedProperty elem)
         {
-            var tyProp = elem.FindPropertyRelative("type");
+            var tyName = GetEnumProp<AvrcParameterType>(nameof(AvrcParameter.type), elem);
+
+            return tyName == AvrcParameterType.Int || tyName == AvrcParameterType.Bool;
+        }
+
+        private static T GetEnumProp<T>(string name, SerializedProperty elem) where T: Enum
+        {
+            var tyProp = elem.FindPropertyRelative(name);
             if (tyProp.enumValueIndex < 0 || tyProp.enumValueIndex >= tyProp.enumNames.Length)
             {
-                return null;
+                return default;
             }
 
-            AvrcParameterType ty;
-            if (Enum.TryParse(
-                    tyProp.enumNames[tyProp.enumValueIndex],
-                    out ty
-                ))
+            var values = Enum.GetValues(typeof(T));
+            if (tyProp.enumValueIndex < 0 || tyProp.enumValueIndex >= values.Length)
             {
-                return ty;
+                return default;
             }
-            else
-            {
-                return null;
-            }
+
+            return (T)values.GetValue(tyProp.enumValueIndex);
         }
 
         private void OnDrawListHeader(Rect rect)
@@ -151,10 +154,16 @@ namespace net.fushizen.avrc
             rect.y += 2;
             rect.height = EditorGUIUtility.singleLineHeight;
 
-            EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 100),
+            EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 60),
                 element.FindPropertyRelative("type"),
                 GUIContent.none
             );
+
+            if (ElementIsIntLike(element))
+            {
+                var mode = element.FindPropertyRelative(nameof(AvrcParameter.syncDirection));
+                EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 80), mode, GUIContent.none);
+            }
             
             var propName = element.FindPropertyRelative("name");
             EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, rect.width),
@@ -164,11 +173,11 @@ namespace net.fushizen.avrc
 
             if (ElementHasRangeProp(element))
             {
-                var minVal = element.FindPropertyRelative("minVal");
-                var maxVal = element.FindPropertyRelative("maxVal");
-
                 rect.x = initialRect.x;
                 rect.y += 4 + EditorGUIUtility.singleLineHeight;
+
+                var minVal = element.FindPropertyRelative("minVal");
+                var maxVal = element.FindPropertyRelative("maxVal");
 
                 AvrcUI.RenderLabel(ref rect, L.AP_RANGE, padAfter: 10);
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 30), minVal, GUIContent.none);

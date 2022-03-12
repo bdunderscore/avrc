@@ -96,7 +96,6 @@ namespace net.fushizen.avrc
                 new GUIContent("Int"),
                 new GUIContent("Float"),
                 new GUIContent("IsLocal"),
-                new GUIContent("Int (bidirectional)")
             }
         };
         
@@ -144,7 +143,6 @@ namespace net.fushizen.avrc
                 new GUIContent("Int"),
                 new GUIContent("Float"),
                 new GUIContent("IsLocal"),
-                new GUIContent("Int (相互通信)")
             }
         };
 

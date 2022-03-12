@@ -76,7 +76,7 @@ namespace net.fushizen.avrc
 
             foreach (var param in Parameters.avrcParams)
             {
-                if (param.type != AvrcParameters.AvrcParameterType.BidiInt) continue;
+                if (param.syncDirection != AvrcParameters.SyncDirection.TwoWay) continue;
                 var parameterName = param.TxParameterFlag(Names);
 
                 if (knownParameters.Contains(parameterName)) continue;

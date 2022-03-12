@@ -149,7 +149,7 @@ namespace net.fushizen.avrc
                 states[i].motion = AvrcAssets.EmptyClip();
                 remoteDriven[i].motion = AvrcAssets.EmptyClip();
 
-                if (parameter.type == AvrcParameters.AvrcParameterType.BidiInt)
+                if (parameter.syncDirection == AvrcParameters.SyncDirection.TwoWay)
                 {
                     states[i].motion = Animations.Named(
                         $"{Names.Prefix}_{parameter.name}_{i}_ACK",

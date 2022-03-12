@@ -65,7 +65,7 @@ namespace net.fushizen.avrc
             
             // Build a big cube to control avatar bounds when a receiver is present.
             bool transmitsValue =
-                isTx || parameters.avrcParams.Any(p => p.type == AvrcParameters.AvrcParameterType.BidiInt);
+                isTx || parameters.avrcParams.Any(p => p.syncDirection == AvrcParameters.SyncDirection.TwoWay);
             if (transmitsValue && parent.transform.Find("AVRC_Bounds") == null)
             {
                 GameObject boundsCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -135,24 +135,17 @@ namespace net.fushizen.avrc
                     trigger.value = 1;
                     break;
                 case AvrcParameters.AvrcParameterType.Bool:
-                    trigger.parameter = _names.InternalParameter(parameter);
-                    trigger.receiverType = ContactReceiver.ReceiverType.Constant;
-                    trigger.value = 1;
-                    break;
                 case AvrcParameters.AvrcParameterType.Int:
                     trigger.parameter = _names.InternalParameter(parameter);
                     trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
-                    break;
-                case AvrcParameters.AvrcParameterType.BidiInt:
-                    trigger.parameter = _names.InternalParameter(parameter);
-                    trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
-                    trigger.position = new Vector3(0, 0, 0);
-                    
-                    // Create ACK trigger
-                    triggerObj = createTrigger<VRCContactSender>(parent, $"{parameter.name}_ACK");
-                    triggerObj.SetActive(false);
-                    var sender = triggerObj.GetComponent<VRCContactSender>();
-                    sender.position = new Vector3(0, 0, 0);
+                    if (parameter.syncDirection == AvrcParameters.SyncDirection.TwoWay)
+                    {
+                        // Create ACK trigger
+                        triggerObj = createTrigger<VRCContactSender>(parent, $"{parameter.name}_ACK");
+                        triggerObj.SetActive(false);
+                        var sender = triggerObj.GetComponent<VRCContactSender>();
+                        sender.position = new Vector3(0, 0, 0);
+                    }
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -223,7 +216,7 @@ namespace net.fushizen.avrc
                 var triggerObj = createTrigger<VRCContactSender>(obj, param.name);
                 triggerObj.SetActive(param.type == AvrcParameters.AvrcParameterType.Float);
 
-                if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
+                if (param.syncDirection == AvrcParameters.SyncDirection.TwoWay)
                 {
                     triggerObj.GetComponent<VRCContactSender>().position = new Vector3(0, 0, 0);
                     

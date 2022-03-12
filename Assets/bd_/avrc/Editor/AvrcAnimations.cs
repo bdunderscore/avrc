@@ -104,7 +104,7 @@ namespace net.fushizen.avrc
                     _names.ParameterPath(param), typeof(GameObject), "m_IsActive",
                     AnimationCurve.Constant(0, 1, isActive));
 
-                if (param.type == AvrcParameters.AvrcParameterType.BidiInt)
+                if (param.syncDirection == AvrcParameters.SyncDirection.TwoWay)
                 {
                     clip.SetCurve(
                         _names.ParameterPath(param) + "_ACK", typeof(GameObject), "m_IsActive",

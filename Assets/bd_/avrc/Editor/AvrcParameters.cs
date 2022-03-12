@@ -39,15 +39,21 @@ namespace net.fushizen.avrc
             Int,
             Float,
             IsLocal,
-            BidiInt
         }
-        
+
+        [Serializable]
+        public enum SyncDirection
+        {
+            OneWay,
+            TwoWay
+        }
+
         [Serializable]
         public struct AvrcParameter
         {
             public string name;
             public AvrcParameterType type;
-            public float timeoutSeconds;
+            public SyncDirection syncDirection;
             public int minVal, maxVal;
 
             internal string TxParameterFlag(AvrcNames names)

@@ -87,9 +87,9 @@ namespace net.fushizen.avrc
                 case AvrcParameters.AvrcParameterType.IsLocal:
                     animatorStateMachine = IsLocalParamLayer(parameter);
                     break;
-                case AvrcParameters.AvrcParameterType.BidiInt:
+                /*case AvrcParameters.AvrcParameterType.BidiInt:
                     animatorStateMachine = BidiIntParamLayer(parameter);
-                    break;
+                    break;*/
                 default:
                     throw new ArgumentOutOfRangeException();
             }
