@@ -132,49 +132,6 @@ namespace net.fushizen.avrc
             }
         }
 
-        static Rect AdvanceRect(ref Rect rect, Single width, Single padBefore = 0, Single padAfter = 0)
-        {
-            var r = rect;
-            r.width = width;
-            r.x += padBefore;
-            rect.x += width + padBefore + padAfter;
-            rect.width -= width + padBefore + padAfter;
-
-            return r;
-        }
-
-        static void RenderLabel(
-            ref Rect rect,
-            GUIContent content,
-            GUIStyle style = null, 
-            Single padBefore = 0,
-            Single padAfter = 0)
-        {
-            if (style == null)
-            {
-                style = GUI.skin.label;
-            }
-
-            style = new GUIStyle(style)
-            {
-                alignment = TextAnchor.MiddleCenter
-            };
-
-            Vector2 size = style.CalcSize(content);
-            var r = AdvanceRect(ref rect, size.x, padBefore, padAfter);
-            GUI.Label(r, content, style);
-        }
-
-        static void RenderLabel(
-            ref Rect rect,
-            string content,
-            GUIStyle style = null,
-            Single padBefore = 0,
-            Single padAfter = 0
-        ) {
-            RenderLabel(ref rect, new GUIContent(content), style, padBefore, padAfter);
-        }
-
         private void OnDrawListHeader(Rect rect)
         {
             EditorGUI.LabelField(rect, L.AP_PARAMETERS);
@@ -194,15 +151,13 @@ namespace net.fushizen.avrc
             rect.y += 2;
             rect.height = EditorGUIUtility.singleLineHeight;
 
-            EditorGUI.PropertyField(
-                AdvanceRect(ref rect, 100),
+            EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 100),
                 element.FindPropertyRelative("type"),
                 GUIContent.none
             );
             
             var propName = element.FindPropertyRelative("name");
-            EditorGUI.PropertyField(
-                AdvanceRect(ref rect, rect.width),
+            EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, rect.width),
                 propName,
                 GUIContent.none
             );
@@ -214,11 +169,11 @@ namespace net.fushizen.avrc
 
                 rect.x = initialRect.x;
                 rect.y += 4 + EditorGUIUtility.singleLineHeight;
-                
-                RenderLabel(ref rect, L.AP_RANGE, padAfter: 10);
-                EditorGUI.PropertyField(AdvanceRect(ref rect, 30), minVal, GUIContent.none);
-                RenderLabel(ref rect, "...");
-                EditorGUI.PropertyField(AdvanceRect(ref rect, 30), maxVal, GUIContent.none);
+
+                AvrcUI.RenderLabel(ref rect, L.AP_RANGE, padAfter: 10);
+                EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 30), minVal, GUIContent.none);
+                AvrcUI.RenderLabel(ref rect, "...");
+                EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 30), maxVal, GUIContent.none);
             }
         }
 
