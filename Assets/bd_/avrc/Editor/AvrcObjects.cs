@@ -228,7 +228,6 @@ namespace net.fushizen.avrc
                     trigger.parameter = _names.InternalParameter(param, "ACK");
                     trigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
                     trigger.position = new Vector3(0, 0, 0);
-                    break;
                 }
             }
 

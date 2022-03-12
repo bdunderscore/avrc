@@ -55,6 +55,8 @@ namespace net.fushizen.avrc
         {
             var entryState = FindStateForStorage(names, descriptor);
 
+            if (entryState == null) return null;
+
             return entryState.behaviours.OfType<AvrcSavedState>().FirstOrDefault();
         }
 

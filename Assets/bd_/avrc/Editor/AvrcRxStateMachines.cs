@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using BestHTTP.SecureProtocol.Org.BouncyCastle.Math.Field;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -84,55 +85,37 @@ namespace net.fushizen.avrc
             return stateMachine;
         }
 
-        protected override AnimatorStateMachine BoolParamLayer(AvrcParameters.AvrcParameter parameter)
+        protected override AnimatorStateMachine TwoWayParamLayer(AvrcParameters.AvrcParameter parameter, int values, EqualsCondition equalsCondition,
+            NotEqualsCondition notEqualsCondition, DriveParameter driveParameter)
         {
-            return BoolParamLayer(parameter, true);
+            return FiniteParamLayer(true, parameter, values, equalsCondition, notEqualsCondition, driveParameter);
         }
 
-        private AnimatorStateMachine BoolParamLayer(AvrcParameters.AvrcParameter parameter, bool localOnly)
+        protected override AnimatorStateMachine OneWayParamLayer(
+            AvrcParameters.AvrcParameter parameter,
+            int values,
+            EqualsCondition equalsCondition,
+            NotEqualsCondition notEqualsCondition,
+            DriveParameter driveParameter
+        )
         {
-            var stateMachine = new AnimatorStateMachine();
-
-            var conditionParamName = Names.InternalParameter(parameter);
-            AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
-            AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
-            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
-
-            var s_false = stateMachine.AddState("False");
-            s_false.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.UserParameter(parameter), 0, localOnly: localOnly)};
-            s_false.motion = AvrcAssets.EmptyClip();
-
-            var s_true = stateMachine.AddState("True");
-            s_true.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.UserParameter(parameter), 1, localOnly: localOnly)};
-            s_true.motion = AvrcAssets.EmptyClip();
-
-            var t = stateMachine.AddAnyStateTransition(s_true);
-            t.duration = 0;
-            t.hasExitTime = false;
-            t.canTransitionToSelf = false;
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, conditionParamName);
-            AddPresenceCondition(t, Names.ParamTxProximity);
-
-            t = stateMachine.AddAnyStateTransition(s_false);
-            t.duration = 0;
-            t.hasExitTime = false;
-            t.canTransitionToSelf = false;
-            t.AddCondition(AnimatorConditionMode.Less, 0.5f, conditionParamName);
-            AddPresenceCondition(t, Names.ParamTxProximity);
-
-            return stateMachine;
+            return FiniteParamLayer(false, parameter, values, equalsCondition, notEqualsCondition, driveParameter);
         }
-
-        protected override AnimatorStateMachine IntParamLayer(AvrcParameters.AvrcParameter parameter)
-        {
+        AnimatorStateMachine FiniteParamLayer(
+            bool twoWay,
+            AvrcParameters.AvrcParameter parameter,
+            int values,
+            EqualsCondition equalsCondition,
+            NotEqualsCondition notEqualsCondition, 
+            DriveParameter driveParameter
+        ) {
             var stateMachine = new AnimatorStateMachine();
 
-            var states = new AnimatorState[parameter.maxVal - parameter.minVal + 1];
+            var states = new AnimatorState[values];
             var perState = 1.0f / (states.Length + 1);
 
             var conditionParamName = Names.InternalParameter(parameter);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
-            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
             AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
 
             var remoteDriven = new AnimatorState[states.Length];
@@ -145,11 +128,14 @@ namespace net.fushizen.avrc
                 states[i] = stateMachine.AddState($"Passive_{parameter.name}_{i}");
                 remoteDriven[i] = stateMachine.AddState($"RemoteDriven_{parameter.name}_{i}");
 
-                remoteDriven[i].behaviours = new StateMachineBehaviour[] { ParameterDriver(Names.UserParameter(parameter), i) };
+                var driver = ParameterDriver();
+                remoteDriven[i].behaviours = new StateMachineBehaviour[] { driver };
+                driveParameter(driver, i);
+                
                 states[i].motion = AvrcAssets.EmptyClip();
                 remoteDriven[i].motion = AvrcAssets.EmptyClip();
 
-                if (parameter.syncDirection == AvrcParameters.SyncDirection.TwoWay)
+                if (twoWay)
                 {
                     states[i].motion = Animations.Named(
                         $"{Names.Prefix}_{parameter.name}_{i}_ACK",
@@ -159,10 +145,12 @@ namespace net.fushizen.avrc
                 }
                 
                 // When driven locally (only) skip the parameter driver
+                // TODO: when one-way drive it back to the correct state
+                // TODO: avoid large any state transitions
                 var transition = stateMachine.AddAnyStateTransition(states[i]);
                 transition.duration = 0;
                 transition.hasExitTime = false;
-                transition.AddCondition(AnimatorConditionMode.Equals, i + parameter.minVal, Names.UserParameter(parameter));
+                equalsCondition(transition, i);
                 transition.AddCondition(AnimatorConditionMode.Less, perState / 2, conditionParamName);
                 transition.canTransitionToSelf = false;
 
@@ -177,11 +165,6 @@ namespace net.fushizen.avrc
             }
 
             return stateMachine;
-        }
-
-        protected override AnimatorStateMachine BidiIntParamLayer(AvrcParameters.AvrcParameter parameter)
-        {
-            return IntParamLayer(parameter);
         }
 
         protected override AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter)

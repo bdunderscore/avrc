@@ -12,10 +12,11 @@ namespace net.fushizen.avrc
     internal abstract class AvrcLayerSetupCommon
     {
         protected const float EPSILON = 0.01f;
+
         //protected const float PROXIMITY_EPSILON = 1 - EPSILON;
         protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
         protected const float MaxPresenceTestValue = AvrcObjects.PresenceTestValue + EPSILON;
-        
+
         protected readonly AvrcParameters Parameters;
         protected readonly AnimatorController AnimatorController;
         protected readonly AvrcNames Names;
@@ -27,13 +28,13 @@ namespace net.fushizen.avrc
             Names = names;
             Animations = new AvrcAnimations(parameters, Names);
             Objects = new AvrcObjects(parameters, Names);
-            
+
             this.Parameters = parameters;
             foreach (var c in avatarDescriptor.baseAnimationLayers)
             {
                 if (c.type == VRCAvatarDescriptor.AnimLayerType.FX)
                 {
-                    AnimatorController = (AnimatorController)c.animatorController;
+                    AnimatorController = (AnimatorController) c.animatorController;
                     break;
                 }
             }
@@ -50,7 +51,7 @@ namespace net.fushizen.avrc
             t.AddCondition(AnimatorConditionMode.Less, MaxPresenceTestValue, varName);
             t.AddCondition(AnimatorConditionMode.Greater, MinPresenceTestValue, varName);
         }
-        
+
         protected void AddParameter(string name, AnimatorControllerParameterType ty)
         {
             foreach (var param in AnimatorController.parameters)
@@ -66,30 +67,107 @@ namespace net.fushizen.avrc
                     return;
                 }
             }
-            
+
             AnimatorController.AddParameter(name, ty);
         }
 
         protected void CreateParameterLayer(AvrcParameters.AvrcParameter parameter)
         {
+            switch (parameter.type)
+            {
+                case AvrcParameters.AvrcParameterType.Bool:
+                case AvrcParameters.AvrcParameterType.IsLocal:
+                    AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
+                    break;
+                case AvrcParameters.AvrcParameterType.Int:
+                    AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
+                    break;
+                case AvrcParameters.AvrcParameterType.Float:
+                    AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Float);
+                    break;
+            }
+
             AnimatorStateMachine animatorStateMachine = null;
             switch (parameter.type)
             {
                 case AvrcParameters.AvrcParameterType.Bool:
-                    animatorStateMachine = BoolParamLayer(parameter);
+                {
+                    EqualsCondition eq = (transition, index) =>
+                    {
+                        transition.AddCondition(
+                            index != 0 ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot,
+                            0, Names.UserParameter(parameter)
+                        );
+                    };
+                    NotEqualsCondition neq = (transition, index) => eq(transition, index != 0 ? 0 : 1);
+                    DriveParameter drive = (driver, index) =>
+                    {
+                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter()
+                        {
+                            name = Names.UserParameter(parameter),
+                            type = VRC_AvatarParameterDriver.ChangeType.Set,
+                            value = index
+                        });
+                    };
+
+                    if (parameter.syncDirection == AvrcParameters.SyncDirection.OneWay)
+                    {
+                        animatorStateMachine = OneWayParamLayer(parameter, 2, eq, neq, drive);
+                    }
+                    else
+                    {
+                        animatorStateMachine = TwoWayParamLayer(parameter, 2, eq, neq, drive);
+                    }
+
                     break;
+                }
                 case AvrcParameters.AvrcParameterType.Int:
-                    animatorStateMachine = IntParamLayer(parameter);
+                {
+                    var values = parameter.maxVal - parameter.minVal + 1;
+
+                    EqualsCondition eq = (transition, index) =>
+                    {
+                        transition.AddCondition(
+                            AnimatorConditionMode.Equals,
+                            index + parameter.minVal,
+                            Names.UserParameter(parameter)
+                        );
+                    };
+                    NotEqualsCondition neq = (transition, index) =>
+                    {
+                        transition.AddCondition(
+                            AnimatorConditionMode.NotEqual,
+                            index + parameter.minVal,
+                            Names.UserParameter(parameter)
+                        );
+                    };
+                    DriveParameter drive = (driver, index) =>
+                    {
+                        driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter()
+                        {
+                            name = Names.UserParameter(parameter),
+                            type = VRC_AvatarParameterDriver.ChangeType.Set,
+                            value = index + parameter.minVal
+                        });
+                    };
+
+                    if (parameter.syncDirection == AvrcParameters.SyncDirection.OneWay)
+                    {
+                        animatorStateMachine = OneWayParamLayer(parameter, values, eq, neq, drive);
+                    }
+                    else
+                    {
+                        animatorStateMachine = TwoWayParamLayer(parameter, values, eq, neq, drive);
+                    }
+
                     break;
+                }
                 case AvrcParameters.AvrcParameterType.Float:
                     animatorStateMachine = FloatParamLayer(parameter);
                     break;
                 case AvrcParameters.AvrcParameterType.IsLocal:
                     animatorStateMachine = IsLocalParamLayer(parameter);
                     break;
-                /*case AvrcParameters.AvrcParameterType.BidiInt:
-                    animatorStateMachine = BidiIntParamLayer(parameter);
-                    break;*/
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -116,7 +194,7 @@ namespace net.fushizen.avrc
         protected void AddOrReplaceLayer(string layerName, AnimatorStateMachine animatorStateMachine)
         {
             animatorStateMachine.name = layerName;
-            
+
             bool newLayer = true;
             var layers = AnimatorController.layers;
             foreach (var t in layers)
@@ -158,27 +236,54 @@ namespace net.fushizen.avrc
                         AssetDatabase.RemoveObjectFromAsset(asset);
                     }
                 }
-                
+
                 AssetDatabase.AddObjectToAsset(animatorStateMachine, AssetDatabase.GetAssetPath(AnimatorController));
             }
-            
+
             // animatorStateMachine.hideFlags = HideFlags.HideInHierarchy;
         }
 
-        protected abstract AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter);
-        protected abstract AnimatorStateMachine BoolParamLayer(AvrcParameters.AvrcParameter parameter);
-        protected abstract AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter);
-        protected abstract AnimatorStateMachine IntParamLayer(AvrcParameters.AvrcParameter parameter);
+        protected delegate void EqualsCondition(AnimatorStateTransition transition, int index);
 
-        protected abstract AnimatorStateMachine BidiIntParamLayer(AvrcParameters.AvrcParameter parameter);
+        protected delegate void NotEqualsCondition(AnimatorStateTransition transition, int index);
+
+        protected delegate void DriveParameter(VRCAvatarParameterDriver driver, int index);
+
+        protected abstract AnimatorStateMachine OneWayParamLayer(
+            AvrcParameters.AvrcParameter parameter,
+            int values,
+            EqualsCondition equalsCondition,
+            NotEqualsCondition notEqualsCondition,
+            DriveParameter driveParameter
+        );
+
+        protected abstract AnimatorStateMachine TwoWayParamLayer(
+            AvrcParameters.AvrcParameter parameter,
+            int values,
+            EqualsCondition equalsCondition,
+            NotEqualsCondition notEqualsCondition,
+            DriveParameter driveParameter
+        );
+
+        protected abstract AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter);
+        protected abstract AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter);
+
+        protected VRCAvatarParameterDriver ParameterDriver(bool localOnly = true)
+        {
+            var driver = ScriptableObject.CreateInstance<VRCAvatarParameterDriver>();
+            driver.name = $"AVRC_Driver";
+            driver.localOnly = localOnly;
+            driver.parameters = new List<VRC_AvatarParameterDriver.Parameter>();
+
+            AssetDatabase.AddObjectToAsset(driver, AnimatorController);
+
+            return driver;
+        }
 
         protected VRCAvatarParameterDriver ParameterDriver(string paramName, int value, bool localOnly = true)
         {
-            var driver = ScriptableObject.CreateInstance<VRCAvatarParameterDriver>();
-            driver.name = $"Driver_{paramName}_{value}";
-            driver.localOnly = localOnly;
-            driver.parameters = new List<VRC_AvatarParameterDriver.Parameter>()
-            {
+            var driver = ParameterDriver(localOnly);
+            driver.parameters.Add(
                 new VRC_AvatarParameterDriver.Parameter()
                 {
                     chance = 1,
@@ -186,13 +291,11 @@ namespace net.fushizen.avrc
                     value = value,
                     type = VRC_AvatarParameterDriver.ChangeType.Set,
                 }
-            };
-            
-            AssetDatabase.AddObjectToAsset(driver, AnimatorController);
+            );
 
             return driver;
         }
-        
+
         protected delegate AnimationClip ClipCreator(AvrcAnimations.LocalState local);
 
         /// <summary>
@@ -203,7 +306,8 @@ namespace net.fushizen.avrc
         /// <param name="recvPeerLocal"></param>
         /// <param name="clipCreator"></param>
         /// <returns></returns>
-        protected AnimatorStateMachine CommonSetupLayer(string animPrefix, string recvPeerLocal, ClipCreator clipCreator)
+        protected AnimatorStateMachine CommonSetupLayer(string animPrefix, string recvPeerLocal,
+            ClipCreator clipCreator)
         {
             AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
 
@@ -221,7 +325,7 @@ namespace net.fushizen.avrc
             var t = AddInstantTransition(init, ownerLocal);
             AddIsLocalCondition(t);
             // OwnerLocal is a terminal state.
-            
+
             var peerLocal = rootStateMachine.AddState("PeerLocal");
             peerLocal.motion = Animations.Named(
                 animPrefix + "PeerLocal",
@@ -249,7 +353,8 @@ namespace net.fushizen.avrc
             return rootStateMachine;
         }
 
-        protected static AnimatorStateTransition AddInstantAnyTransition(AnimatorStateMachine sourceState, AnimatorState destinationState)
+        protected static AnimatorStateTransition AddInstantAnyTransition(AnimatorStateMachine sourceState,
+            AnimatorState destinationState)
         {
             AnimatorStateTransition transition = sourceState.AddAnyStateTransition(destinationState);
             transition.exitTime = 0;
