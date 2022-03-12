@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NUnit.Framework.Constraints;
@@ -51,6 +52,7 @@ namespace net.fushizen.avrc
         {
             Localizations.SwitchLanguageButton();
 
+            EditorGUI.BeginChangeCheck();
             _params = EditorGUILayout.ObjectField(
                 L.INST_PARAMS, _params, typeof(AvrcParameters), allowSceneObjects: false
             ) as AvrcParameters;
@@ -59,7 +61,7 @@ namespace net.fushizen.avrc
                 L.INST_AVATAR, _targetAvatar, typeof(VRCAvatarDescriptor), allowSceneObjects: true
             ) as VRCAvatarDescriptor;
 
-            if (_targetAvatar != priorTargetAvatar)
+            if (EditorGUI.EndChangeCheck())
             {
                 _installMenu = null;
                 InitRemapPanel();
@@ -132,6 +134,9 @@ namespace net.fushizen.avrc
             objects.buildReceiverBase(root, names.Prefix);
             AvrcRxStateMachines.SetupRx(_targetAvatar, avrcParameters, names);
             
+            _savedstate.role = _role;
+            AvrcStateSaver.SaveState(_cachedNames, _targetAvatar, _savedstate);
+            
             InstallMenu();
         }
 
@@ -148,6 +153,9 @@ namespace net.fushizen.avrc
             
             objects.buildTransmitterBase(root, names.Prefix);
             AvrcTxStateMachines.SetupTx(_targetAvatar, avrcParameters, names);
+
+            _savedstate.role = _role;
+            AvrcStateSaver.SaveState(_cachedNames, _targetAvatar, _savedstate);
 
             InstallMenu();
         }
@@ -247,27 +255,14 @@ namespace net.fushizen.avrc
         
         #region Remap panel
 
-        [Serializable]
-        private struct RemapEntry
-        {
-            public string paramName;
-            public string mappedName;
-        }
-
-        [Serializable]
-        private class RemapEntryContainer : ScriptableObject
-        {
-            public List<RemapEntry> _entries = new List<RemapEntry>();
-        }
-
-        private RemapEntryContainer _container;
+        private AvrcSavedState _savedstate;
         private ReorderableList _remapList;
         private AvrcNames _cachedNames;
         bool _foldout_remap_panel = false;
         private SerializedObject _remapObject;
         private SerializedProperty _remapProp;
         private string duplicateName = null;
-
+        
         AvrcNames ApplyNameOverrides()
         {
             duplicateName = null;
@@ -277,46 +272,58 @@ namespace net.fushizen.avrc
                 return null;
             }
             _cachedNames = new AvrcNames(_params);
-            foreach (var entry in _container._entries)
+            HashSet<string> mappedParams = new HashSet<string>();
+            HashSet<string> knownParams = new HashSet<string>();
+            foreach (var specParam in _params.avrcParams)
             {
-                if (!String.IsNullOrWhiteSpace(entry.mappedName))
+                knownParams.Add(specParam.name);
+            }
+            var mappings = _savedstate.parameterMappings
+                .Where(p => knownParams.Contains(p.avrcParameterName)).ToArray();
+            foreach (var alreadyMapped in mappings)
+            {
+                knownParams.Remove(alreadyMapped.avrcParameterName);
+
+                var mappedName = DefaultNameMapping(alreadyMapped);
+                if (!String.IsNullOrWhiteSpace(alreadyMapped.remappedParameterName))
                 {
-                    _cachedNames.ParameterMap[entry.paramName] = entry.mappedName;
+                    _cachedNames.ParameterMap[alreadyMapped.avrcParameterName] = alreadyMapped.remappedParameterName;
+                    mappedName = alreadyMapped.remappedParameterName;
+                }
+
+                if (!mappedParams.Add(mappedName))
+                {
+                    duplicateName = mappedName;
                 }
             }
-
-            HashSet<string> dupeCheck = new HashSet<string>();
-            foreach (var value in _cachedNames.ParameterMap.Values)
+            foreach (var newParam in knownParams)
             {
-                if (!dupeCheck.Add(value))
+                _savedstate.parameterMappings.Add(new ParameterMapping()
                 {
-                    duplicateName = value;
-                }
+                    avrcParameterName = newParam,
+                    remappedParameterName = ""
+                });
             }
-
+            
+            _savedstate.parameterMappings.Sort(
+                (a, b) => String.Compare(a.avrcParameterName, b.avrcParameterName, StringComparison.CurrentCulture)
+            );
+            
             return _cachedNames;
         }
         
         void InitRemapPanel()
         {
-            _container = CreateInstance<RemapEntryContainer>();
             _remapList = null;
 
-            if (_params == null) return;
+            if (_params == null || _targetAvatar == null) return;
 
+            _cachedNames = new AvrcNames(_params);
+            _savedstate = AvrcStateSaver.LoadState(_cachedNames, _targetAvatar);
             ApplyNameOverrides();
-            
-            foreach (var k in _cachedNames.ParameterMap.Keys)
-            {
-                _container._entries.Add(new RemapEntry
-                {
-                    paramName = k,
-                    mappedName = ""
-                });
-            }
 
-            _remapObject = new SerializedObject(_container);
-            _remapProp = _remapObject.FindProperty(nameof(RemapEntryContainer._entries));
+            _remapObject = new SerializedObject(_savedstate);
+            _remapProp = _remapObject.FindProperty(nameof(AvrcSavedState.parameterMappings));
             _remapList = new ReorderableList(_remapObject, _remapProp, false, false, false, false)
             {
                 headerHeight = 0,
@@ -327,9 +334,9 @@ namespace net.fushizen.avrc
 
         private Single labelWidth;
 
-        private string DefaultNameMapping(RemapEntry entry)
+        private string DefaultNameMapping(ParameterMapping entry)
         {
-            return _role == AvrcSavedState.Role.TX ? $"AVRC_{_params.prefix}_{entry.paramName}" : entry.paramName;
+            return _role == AvrcSavedState.Role.TX ? $"AVRC_{_params.prefix}_{entry.avrcParameterName}" : entry.avrcParameterName;
         }
 
         private void OnDrawListElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -342,11 +349,11 @@ namespace net.fushizen.avrc
                 x = rect.x,
                 y = rect.y
             };
-            GUI.Label(labelRect, new GUIContent(_container._entries[index].paramName), GUI.skin.label);
+            GUI.Label(labelRect, new GUIContent(_savedstate.parameterMappings[index].avrcParameterName), GUI.skin.label);
             rect.x += labelRect.width;
             rect.width -= labelRect.width;
 
-            var prop = _remapProp.GetArrayElementAtIndex(index).FindPropertyRelative(nameof(RemapEntry.mappedName));
+            var prop = _remapProp.GetArrayElementAtIndex(index).FindPropertyRelative(nameof(ParameterMapping.remappedParameterName));
             EditorGUI.PropertyField(rect, prop, GUIContent.none);
 
             if (prop.stringValue.Equals(""))
@@ -358,7 +365,7 @@ namespace net.fushizen.avrc
                 };
                 EditorGUI.LabelField(
                     rect,
-                    DefaultNameMapping(_container._entries[index]),
+                    DefaultNameMapping(_savedstate.parameterMappings[index]),
                     labelStyle
                 );
             }
@@ -369,7 +376,7 @@ namespace net.fushizen.avrc
             if (_remapList == null) return;
             
             // Verify that the remap list is up to date
-            if (_container._entries.Count != _params.avrcParams.Count)
+            if (_savedstate.parameterMappings.Count != _params.avrcParams.Count)
             {
                 InitRemapPanel();
             }
@@ -378,7 +385,7 @@ namespace net.fushizen.avrc
                 // O(n^2) but we'll probably only have a handful of entries... probably...
                 foreach (var param in _params.avrcParams)
                 {
-                    if (_container._entries.All(e => e.paramName != param.name))
+                    if (_savedstate.parameterMappings.All(e => e.avrcParameterName != param.name))
                     {
                         InitRemapPanel();
                         break;
@@ -391,9 +398,9 @@ namespace net.fushizen.avrc
             // Compute label width
             labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;
 
-            foreach (var p in _container._entries)
+            foreach (var p in _savedstate.parameterMappings)
             {
-                labelWidth = Mathf.Max(labelWidth, new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.paramName)).x);
+                labelWidth = Mathf.Max(labelWidth, new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcParameterName)).x);
             }
 
             EditorGUILayout.HelpBox(

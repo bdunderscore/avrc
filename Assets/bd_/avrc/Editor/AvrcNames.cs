@@ -23,7 +23,7 @@ namespace net.fushizen.avrc
         internal string LayerPrefix => $"_AVRC_{Prefix}";
         internal string LayerSetup => $"{LayerPrefix}_Setup";
         internal string LayerRxConstraint => $"{LayerPrefix}_RXConstraint";
-        internal string LayerTxEnable => $"{LayerPrefix}_TXEnable";
+        internal string LayerTxEnable => $"{LayerPrefix}_Base";
             
         internal string ParamRxPresent => $"_AVRCI_{Prefix}_RxPresent";
         internal string ParamTxProximity => $"_AVRCI_{Prefix}_TxProximity";
