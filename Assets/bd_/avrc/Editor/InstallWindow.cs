@@ -242,9 +242,12 @@ namespace net.fushizen.avrc
                 AssetDatabase.CreateAsset(rootTargetMenu, extractPath);
             }
 
+            AvrcNames names = new AvrcNames(_bindingConfig);
+            
             MenuCloner cloner = new MenuCloner(
                 new SerializedObject(menuRef).FindProperty(nameof(MenuReference.menu)),
-                rootTargetMenu
+                rootTargetMenu,
+                names.ParameterMap
             );
             
             menuRef.menu = rootTargetMenu;

@@ -18,47 +18,43 @@ namespace net.fushizen.avrc
 
         private HashSet<VRCExpressionsMenu> enqueuedAssets = new HashSet<VRCExpressionsMenu>();
         private Queue<VRCExpressionsMenu> pendingClone = new Queue<VRCExpressionsMenu>();
+
         private Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> srcToCloneMap
             = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
+
+        private Dictionary<string, string> _paramRemapDict;
 
         /// <summary>
         /// Returns the set of asset paths that correspond to the source menus (including submenus) for this cloner. +        /// </summary>
         internal IEnumerable<string> SourcePaths
         {
-            get
-            {
-                return srcToCloneMap.Keys.Select(AssetDatabase.GetAssetPath);
-            }
+            get { return srcToCloneMap.Keys.Select(AssetDatabase.GetAssetPath); }
         }
 
         internal SerializedProperty ReferencingProperty
         {
-            get
-            {
-                return _dstProperty;
-            }
+            get { return _dstProperty; }
         }
 
         internal UnityEngine.Object ContainingObject
         {
-            get
-            {
-                return _containingObject;
-            }
+            get { return _containingObject; }
         }
 
         internal string ContainingPath
         {
-            get
-            {
-                return AssetDatabase.GetAssetPath(ContainingObject);
-            }
+            get { return AssetDatabase.GetAssetPath(ContainingObject); }
         }
 
-        public MenuCloner(SerializedProperty dstProperty, UnityEngine.Object containingObject)
+        public MenuCloner(
+            SerializedProperty dstProperty,
+            Object containingObject,
+            Dictionary<string, string> paramRemapDict = null
+        )
         {
             _dstProperty = dstProperty;
             _containingObject = containingObject;
+            _paramRemapDict = paramRemapDict ?? new Dictionary<string, string>();
 
             var path = ContainingPath;
             _notReady = path == null || path.Equals("");
@@ -67,7 +63,10 @@ namespace net.fushizen.avrc
 
         public static MenuCloner InitCloner(AvrcParameters avrcParameters)
         {
-            var cloner = new MenuCloner(new SerializedObject(avrcParameters).FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu)), avrcParameters);
+            var cloner =
+                new MenuCloner(
+                    new SerializedObject(avrcParameters).FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu)),
+                    avrcParameters);
 
             if (cloner._notReady)
             {
@@ -88,14 +87,14 @@ namespace net.fushizen.avrc
                                   && ContainingPath.Equals(AssetDatabase.GetAssetPath(hint)))
             {
                 target = hint;
-
             }
-            else {
+            else
+            {
                 var menu = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
                 AssetDatabase.AddObjectToAsset(menu, ContainingObject);
                 target = menu;
             }
-            
+
             srcToCloneMap[src] = target;
             target.name = src.name;
             enqueuedAssets.Add(target);
@@ -112,30 +111,66 @@ namespace net.fushizen.avrc
             target.UpdateIfRequiredOrScript();
 
             bool dirty = false;
-            
+
             var iter = source.GetIterator();
 
             bool enterChildren = true;
             while (iter.Next(enterChildren))
             {
                 enterChildren = true;
-                
-                if (iter.propertyType == SerializedPropertyType.ObjectReference && iter.objectReferenceValue is VRCExpressionsMenu menu)
+
+                if (iter.propertyType == SerializedPropertyType.ObjectReference &&
+                    iter.objectReferenceValue is VRCExpressionsMenu menu)
                 {
                     var targetProp = target.FindProperty(iter.propertyPath);
                     var submenu = mapAsset(menu, targetProp.objectReferenceValue as VRCExpressionsMenu);
-                    
+
                     if (targetProp.objectReferenceValue != submenu)
                     {
                         targetProp.objectReferenceValue = submenu;
                         dirty = true;
                     }
-                    
+
                     // Skip the m_FileID property
                     enterChildren = false;
                 }
+                else if (iter.propertyPath.EndsWith("parameter.name") &&
+                         iter.propertyType == SerializedPropertyType.String)
+                {
+                    if (_paramRemapDict.ContainsKey(iter.stringValue))
+                    {
+                        var remapped = _paramRemapDict[iter.stringValue];
+                        var targetProp = target.FindProperty(iter.propertyPath);
+                        if (!remapped.Equals(targetProp.stringValue))
+                        {
+                            targetProp.stringValue = remapped;
+                            dirty = true;
+                        }
+                        
+                        // skip the inner array
+                        enterChildren = false;
+                    }
+                }
+                else if (iter.propertyPath.Contains("subParameters.Array.data") &&
+                         iter.propertyPath.EndsWith(".name") && 
+                         iter.propertyType == SerializedPropertyType.String)
+                {
+                    if (_paramRemapDict.ContainsKey(iter.stringValue))
+                    {
+                        var remapped = _paramRemapDict[iter.stringValue];
+                        var targetProp = target.FindProperty(iter.propertyPath);
+                        if (!remapped.Equals(targetProp.stringValue))
+                        {
+                            targetProp.stringValue = remapped;
+                            dirty = true;
+                        }
+                        // skip the inner array
+                        enterChildren = false;
+                    }
+                }
                 else
                 {
+                    Debug.Log(iter.propertyPath);
                     var changed = target.CopyFromSerializedPropertyIfDifferent(iter);
 
                     if (changed)
@@ -154,7 +189,7 @@ namespace net.fushizen.avrc
 
             return dirty;
         }
-        
+
         public bool SyncMenus(VRCExpressionsMenu sourceMenu)
         {
             enqueuedAssets.Clear();
@@ -168,7 +203,7 @@ namespace net.fushizen.avrc
                 CleanAssets();
                 return false;
             }
-            
+
             // Bootstrap
             var priorValue = _dstProperty.objectReferenceValue;
             _dstProperty.objectReferenceValue = mapAsset(sourceMenu, priorValue as VRCExpressionsMenu);
@@ -189,7 +224,7 @@ namespace net.fushizen.avrc
                 _dstProperty.serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(ContainingObject);
             }
-            
+
             CleanAssets();
 
             return dirty;
@@ -210,7 +245,7 @@ namespace net.fushizen.avrc
             {
                 srcToCloneMap.Remove(toRemove);
             }
-            
+
             var objects = AssetDatabase.LoadAllAssetsAtPath(ContainingPath);
             foreach (var obj in objects)
             {
