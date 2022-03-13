@@ -430,16 +430,17 @@ namespace net.fushizen.avrc
             string param)
         {
             AnimatorStateTransition t;
-            var ownerLocalTxTimeout = rootStateMachine.AddState(present.name + "Timeout");
-            ownerLocalTxTimeout.motion = afterTimeout.motion;
-            t = AddInstantTransition(present, ownerLocalTxTimeout);
+            var timeout = rootStateMachine.AddState(present.name + "Timeout");
+            timeout.motion = afterTimeout.motion;
+            t = AddInstantTransition(present, timeout);
             t.exitTime = 0.5f;
             t.hasExitTime = true;
+            timeout.motion = present.motion;
 
-            t = AddInstantTransition(ownerLocalTxTimeout, present);
+            t = AddInstantTransition(timeout, present);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, param);
 
-            t = AddInstantTransition(ownerLocalTxTimeout, afterTimeout);
+            t = AddInstantTransition(timeout, afterTimeout);
             t.exitTime = Timeout - 0.5f;
             t.hasExitTime = true;
         }
