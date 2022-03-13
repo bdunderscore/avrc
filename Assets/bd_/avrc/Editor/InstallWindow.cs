@@ -98,7 +98,7 @@ namespace net.fushizen.avrc
                             timeoutProp,
                             new GUIContent("Timeout (seconds)")
                         );
-                        if (timeoutProp.intValue < 0) timeoutProp.intValue = 0;
+                        if (timeoutProp.floatValue < 1.0f) timeoutProp.floatValue = 1.0f;
                     }
                 }
             }

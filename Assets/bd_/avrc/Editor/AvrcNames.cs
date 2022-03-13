@@ -34,6 +34,13 @@ namespace net.fushizen.avrc
         internal string LayerRxConstraint => $"{LayerPrefix}_RXConstraint";
         internal string LayerTxEnable => $"{LayerPrefix}_Base";
 
+        internal string PubParamPrefix => $"AVRC_{Prefix}_";
+        internal string ParamPrefix => $"_AVRCI_{Prefix}_";
+        
+        internal string PubParamEitherLocal => $"AVRC_{Prefix}_EitherLocal";
+        internal string PubParamPeerPresent => $"AVRC_{Prefix}_PeerPresent";
+        internal string PubParamPeerLocal => $"AVRC_{Prefix}_PeerLocal";
+        
         internal string ParamRxPresent => $"_AVRCI_{Prefix}_RxPresent";
         internal string ParamTxProximity => $"_AVRCI_{Prefix}_TxProximity";
         internal string ParamTxActive => $"_AVRCI_{Prefix}_TxActive";

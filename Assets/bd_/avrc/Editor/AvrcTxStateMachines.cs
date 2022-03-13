@@ -46,6 +46,7 @@ namespace net.fushizen.avrc
             return CommonSetupLayer(
                 Names.Prefix + "_EnableTX_",
                 Names.ParamRxLocal,
+                Names.ParamRxPresent,
                 Animations.TransmitterPresentClip
             );
         }

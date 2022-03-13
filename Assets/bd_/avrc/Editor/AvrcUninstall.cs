@@ -35,6 +35,10 @@ namespace net.fushizen.avrc
             var scene = avatarDescriptor.gameObject.scene;
 
             var layerPrefix = names?.LayerPrefix ?? "_AVRC_";
+
+            var paramPrefixes = names != null
+                ? new string[] {names.ParamPrefix, names.PubParamPrefix}
+                : new string[] {"AVRC_", "_AVRCI_"};
             
             // Purge objects
             var objectRootName = parameters != null ? names.ObjectPath : "AVRC";
@@ -66,6 +70,9 @@ namespace net.fushizen.avrc
             {
                 Undo.RegisterFullObjectHierarchyUndo(fx, "Remove AVRC");
                 fx.layers = fx.layers.Where(layer => !layer.name.StartsWith(layerPrefix)).ToArray();
+                fx.parameters = fx.parameters
+                    .Where(parameter => paramPrefixes.All(prefix => !parameter.name.StartsWith(prefix)))
+                    .ToArray();
                 EditorUtility.SetDirty(fx);
                 AvrcAnimatorUtils.GarbageCollectAnimatorAsset(fx);
             }

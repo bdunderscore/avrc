@@ -37,7 +37,12 @@ namespace net.fushizen.avrc
 
         private AnimatorStateMachine ReceiverSetupLayer()
         {
-            return CommonSetupLayer(Names.Prefix + "_EnableRX_", Names.ParamTxLocal, Animations.ReceiverPresentClip);
+            return CommonSetupLayer(
+                Names.Prefix + "_EnableRX_",
+                Names.ParamTxLocal,
+                Names.ParamTxProximity,
+                Animations.ReceiverPresentClip
+                );
         }
 
         protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)

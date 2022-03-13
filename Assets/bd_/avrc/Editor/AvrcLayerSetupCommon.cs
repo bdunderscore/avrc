@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Codice.Client.BaseCommands.Differences;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -289,16 +290,24 @@ namespace net.fushizen.avrc
 
         protected VRCAvatarParameterDriver ParameterDriver(string paramName, int value, bool localOnly = true)
         {
+            return ParameterDriver(localOnly, (paramName, value));
+        }
+
+        protected VRCAvatarParameterDriver ParameterDriver(bool localOnly = true, params (string, int)[] values)
+        {
             var driver = ParameterDriver(localOnly);
-            driver.parameters.Add(
-                new VRC_AvatarParameterDriver.Parameter()
-                {
-                    chance = 1,
-                    name = paramName,
-                    value = value,
-                    type = VRC_AvatarParameterDriver.ChangeType.Set,
-                }
-            );
+            foreach (var (name, val) in values)
+            {
+                driver.parameters.Add(
+                    new VRC_AvatarParameterDriver.Parameter()
+                    {
+                        chance = 1,
+                        name = name,
+                        value = val,
+                        type = VRC_AvatarParameterDriver.ChangeType.Set,
+                    }
+                );
+            }
 
             return driver;
         }
@@ -307,22 +316,37 @@ namespace net.fushizen.avrc
 
         /// <summary>
         /// This state machine enables the main constraint, and adjusts bounds when it is running on the peer's
-        /// client.
+        /// client. It also sets the common presence variables.
         /// </summary>
         /// <param name="animPrefix"></param>
         /// <param name="recvPeerLocal"></param>
         /// <param name="clipCreator"></param>
         /// <returns></returns>
-        protected AnimatorStateMachine CommonSetupLayer(string animPrefix, string recvPeerLocal,
+        protected AnimatorStateMachine CommonSetupLayer(
+            string animPrefix,
+            string recvPeerLocal,
+            string recvPeerPresent,
             ClipCreator clipCreator)
         {
             AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
+
+            AddParameter(Names.PubParamEitherLocal, AnimatorControllerParameterType.Bool);
+            AddParameter(Names.PubParamPeerLocal, AnimatorControllerParameterType.Bool);
+            AddParameter(Names.PubParamPeerPresent, AnimatorControllerParameterType.Bool);
 
             var init = rootStateMachine.AddState("Init");
             init.motion = Animations.Named(
                 animPrefix + "Init",
                 () => clipCreator(AvrcAnimations.LocalState.Unknown)
             );
+            init.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(localOnly: false,
+                    (Names.PubParamEitherLocal, 0),
+                    (Names.PubParamPeerLocal, 0),
+                    (Names.PubParamPeerPresent, 0)
+                )
+            };
 
             var ownerLocal = rootStateMachine.AddState("OwnerLocal");
             ownerLocal.motion = Animations.Named(
@@ -331,7 +355,29 @@ namespace net.fushizen.avrc
             );
             var t = AddInstantTransition(init, ownerLocal);
             AddIsLocalCondition(t);
-            // OwnerLocal is a terminal state.
+            ownerLocal.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(localOnly: false,
+                    (Names.PubParamEitherLocal, 1),
+                    (Names.PubParamPeerLocal, 0),
+                    (Names.PubParamPeerPresent, 0)
+                )
+            };
+
+            var ownerLocalTxPresent = rootStateMachine.AddState("OwnerLocalTxPresent");
+            ownerLocalTxPresent.motion = ownerLocal.motion;
+            ownerLocalTxPresent.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(localOnly: false,
+                    (Names.PubParamEitherLocal, 1),
+                    (Names.PubParamPeerLocal, 0),
+                    (Names.PubParamPeerPresent, 1)
+                )
+            };
+            t = AddInstantTransition(ownerLocal, ownerLocalTxPresent);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerPresent);
+
+            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal, recvPeerPresent);
 
             var peerLocal = rootStateMachine.AddState("PeerLocal");
             peerLocal.motion = Animations.Named(
@@ -342,22 +388,60 @@ namespace net.fushizen.avrc
             AddParameter(recvPeerLocal, AnimatorControllerParameterType.Float);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
+            
+            peerLocal.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(localOnly: false,
+                    (Names.PubParamEitherLocal, 1),
+                    (Names.PubParamPeerLocal, 1),
+                    (Names.PubParamPeerPresent, 1)
+                )
+            };
 
-            var peerLocalTimer = rootStateMachine.AddState("PeerLocalTimeout");
-            peerLocalTimer.motion = peerLocal.motion;
+            CreateTimeoutStates(rootStateMachine, peerLocal, init, recvPeerLocal);
 
-            t = AddInstantTransition(peerLocal, peerLocalTimer);
-            t.hasExitTime = true;
-            t.exitTime = 0.5f;
+            var peerPresent = rootStateMachine.AddState("PeerPresent");
+            peerPresent.motion = init.motion;
+            t = AddInstantTransition(init, peerPresent);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerPresent);
+            t.AddCondition(AnimatorConditionMode.Less, 0.5f, recvPeerLocal);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
+            
+            peerPresent.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(localOnly: false,
+                    (Names.PubParamEitherLocal, 0),
+                    (Names.PubParamPeerLocal, 0),
+                    (Names.PubParamPeerPresent, 1)
+                )
+            };
 
-            t = AddInstantTransition(peerLocalTimer, peerLocal);
+            t = AddInstantTransition(peerPresent, peerLocal);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
-
-            t = AddInstantTransition(peerLocalTimer, init);
-            t.hasExitTime = true;
-            t.exitTime = Timeout - 0.5f;
+            
+            CreateTimeoutStates(rootStateMachine, peerPresent, init, recvPeerPresent);
 
             return rootStateMachine;
+        }
+
+        private void CreateTimeoutStates(AnimatorStateMachine rootStateMachine,
+            AnimatorState present,
+            AnimatorState afterTimeout,
+            string param)
+        {
+            AnimatorStateTransition t;
+            var ownerLocalTxTimeout = rootStateMachine.AddState(present.name + "Timeout");
+            ownerLocalTxTimeout.motion = afterTimeout.motion;
+            t = AddInstantTransition(present, ownerLocalTxTimeout);
+            t.exitTime = 0.5f;
+            t.hasExitTime = true;
+
+            t = AddInstantTransition(ownerLocalTxTimeout, present);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, param);
+
+            t = AddInstantTransition(ownerLocalTxTimeout, afterTimeout);
+            t.exitTime = Timeout - 0.5f;
+            t.hasExitTime = true;
         }
 
         protected static AnimatorStateTransition AddInstantAnyTransition(AnimatorStateMachine sourceState,
