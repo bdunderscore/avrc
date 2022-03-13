@@ -16,14 +16,14 @@ namespace net.fushizen.avrc
         //protected const float PROXIMITY_EPSILON = 1 - EPSILON;
         protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
         protected const float MaxPresenceTestValue = AvrcObjects.PresenceTestValue + EPSILON;
+        protected readonly AvrcAnimations Animations;
+        protected readonly AnimatorController AnimatorController;
 
         protected readonly VRCAvatarDescriptor Avatar;
-        protected readonly AvrcParameters Parameters;
-        protected readonly AnimatorController AnimatorController;
         protected readonly AvrcBindingConfiguration Binding;
         protected readonly AvrcNames Names;
-        protected readonly AvrcAnimations Animations;
         protected readonly AvrcObjects Objects;
+        protected readonly AvrcParameters Parameters;
         protected readonly float Timeout;
 
         protected AvrcLayerSetupCommon(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
@@ -241,12 +241,6 @@ namespace net.fushizen.avrc
             // animatorStateMachine.hideFlags = HideFlags.HideInHierarchy;
         }
 
-        protected delegate void EqualsCondition(AnimatorStateTransition transition, int index);
-
-        protected delegate void NotEqualsCondition(AnimatorStateTransition transition, int index);
-
-        protected delegate void DriveParameter(VRCAvatarParameterDriver driver, int index);
-
         protected abstract AnimatorStateMachine OneWayParamLayer(
             AvrcParameters.AvrcParameter parameter,
             int values,
@@ -298,8 +292,6 @@ namespace net.fushizen.avrc
 
             return driver;
         }
-
-        protected delegate AnimationClip ClipCreator(AvrcAnimations.LocalState local);
 
         /// <summary>
         /// This state machine enables the main constraint, and adjusts bounds when it is running on the peer's
@@ -457,5 +449,13 @@ namespace net.fushizen.avrc
             AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
             transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
         }
+
+        protected delegate void EqualsCondition(AnimatorStateTransition transition, int index);
+
+        protected delegate void NotEqualsCondition(AnimatorStateTransition transition, int index);
+
+        protected delegate void DriveParameter(VRCAvatarParameterDriver driver, int index);
+
+        protected delegate AnimationClip ClipCreator(AvrcAnimations.LocalState local);
     }
 }

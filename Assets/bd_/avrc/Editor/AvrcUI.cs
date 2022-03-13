@@ -9,6 +9,7 @@ namespace net.fushizen.avrc
         {
         }
 
+
         public static Rect AdvanceRect(ref Rect rect, Single width, Single padBefore = 0, Single padAfter = 0)
         {
             var r = rect;
@@ -23,7 +24,7 @@ namespace net.fushizen.avrc
         public static void RenderLabel(
             ref Rect rect,
             GUIContent content,
-            GUIStyle style = null, 
+            GUIStyle style = null,
             Single padBefore = 0,
             Single padAfter = 0)
         {
@@ -48,7 +49,8 @@ namespace net.fushizen.avrc
             GUIStyle style = null,
             Single padBefore = 0,
             Single padAfter = 0
-        ) {
+        )
+        {
             RenderLabel(ref rect, new GUIContent(content), style, padBefore, padAfter);
         }
     }

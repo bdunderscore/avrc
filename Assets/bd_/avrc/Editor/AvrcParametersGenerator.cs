@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -14,11 +13,9 @@ namespace net.fushizen.avrc
      */
     public class AvrcParametersGenerator
     {
-        private AvrcParameters _parameters;
         private VRCAvatarDescriptor _avatar;
         private bool _foldout;
-
-        private Localizations L => Localizations.Inst;
+        private AvrcParameters _parameters;
 
         internal AvrcParametersGenerator(
             AvrcParameters parameters
@@ -26,6 +23,8 @@ namespace net.fushizen.avrc
         {
             _parameters = parameters;
         }
+
+        private Localizations L => Localizations.Inst;
 
         internal void GenerateParametersUI()
         {
@@ -155,7 +154,7 @@ namespace net.fushizen.avrc
             return avrcParams;
         }
 
-        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
+
         private void RecordFloatParam(
             List<string> errors,
             Dictionary<string, AvrcParameters.AvrcParameter> avrcParams,

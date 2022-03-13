@@ -10,6 +10,20 @@ namespace net.fushizen.avrc
     [CreateAssetMenu(fileName = "AVRCParams", menuName = "bd_/AVRC Parameters", order = 51)]
     public class AvrcParameters : ScriptableObject
     {
+        [Serializable]
+        public enum AvrcParameterType
+        {
+            Bool,
+            Int,
+        }
+
+        [Serializable]
+        public enum SyncDirection
+        {
+            OneWay,
+            TwoWay
+        }
+
         public List<AvrcParameter> avrcParams;
         public Vector3 baseOffset;
         public string prefix;
@@ -28,20 +42,6 @@ namespace net.fushizen.avrc
         public AvrcParameters()
         {
             avrcParams = new List<AvrcParameter>();
-        }
-
-        [Serializable]
-        public enum AvrcParameterType
-        {
-            Bool,
-            Int,
-        }
-
-        [Serializable]
-        public enum SyncDirection
-        {
-            OneWay,
-            TwoWay
         }
 
         [Serializable]

@@ -11,16 +11,6 @@ namespace net.fushizen.avrc
 {
     internal class AvrcObjects
     {
-        private readonly AvrcParameters _parameters;
-        private readonly AvrcNames _names;
-
-        public AvrcObjects(AvrcParameters parameters, AvrcNames names)
-        {
-            this._parameters = parameters;
-            this._names = names;
-        }
-
-
         internal const float RadiusScale = 1f;
 
         internal const float PresenceTestValue = 0.66f;
@@ -29,6 +19,15 @@ namespace net.fushizen.avrc
         // center of the receiver (received value 1). Two radiuses away is a maximum distance (1.0).
         internal static readonly Vector3 PresencePositionOffset
             = Vector3.forward * 0.5f * RadiusScale * (2 - PresenceTestValue);
+
+        private readonly AvrcNames _names;
+        private readonly AvrcParameters _parameters;
+
+        public AvrcObjects(AvrcParameters parameters, AvrcNames names)
+        {
+            this._parameters = parameters;
+            this._names = names;
+        }
 
         internal GameObject buildConstraintBase(
             GameObject parent,

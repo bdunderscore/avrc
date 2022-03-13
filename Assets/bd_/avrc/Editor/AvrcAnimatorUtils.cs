@@ -16,7 +16,7 @@ namespace net.fushizen.avrc
         {
             var path = AssetDatabase.GetAssetPath(animator);
             if (path == null) return;
-            
+
             var assets = AssetDatabase.LoadAllAssetsAtPath(path);
 
             // Check for multiple Animators first
@@ -27,7 +27,6 @@ namespace net.fushizen.avrc
                     Debug.LogError("Multiple animation controllers found in asset "
                                    + AssetDatabase.GetAssetPath(animator)
                                    + "; not garbage collecting.");
-                    
                 }
             }
 
@@ -40,14 +39,14 @@ namespace net.fushizen.avrc
             while (visitQueue.Count > 0)
             {
                 var serializedObject = visitQueue.Dequeue();
-                
+
                 var iterator = serializedObject.GetIterator();
                 while (iterator.Next(true))
                 {
                     ProcessProperty(iterator);
                 }
             }
-            
+
             void ProcessProperty(SerializedProperty serializedProperty)
             {
                 if (serializedProperty.isArray)

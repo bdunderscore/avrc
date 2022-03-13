@@ -8,7 +8,8 @@ namespace net.fushizen.avrc
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            property.enumValueIndex = EditorGUI.Popup(position, label, property.enumValueIndex, Localizations.Inst.PROP_TYPE_NAMES);
+            property.enumValueIndex = EditorGUI.Popup(position, label, property.enumValueIndex,
+                Localizations.Inst.PROP_TYPE_NAMES);
         }
     }
 }

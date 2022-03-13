@@ -13,39 +13,22 @@ namespace net.fushizen.avrc
     internal class MenuReference : ScriptableObject
     {
         public VRCExpressionsMenu menu;
-    } 
-    
+    }
+
     public class InstallWindow : EditorWindow
     {
+        private VRCExpressionsMenu _installMenu;
         private AvrcParameters _params;
         private VRCAvatarDescriptor _targetAvatar;
-        private VRCExpressionsMenu _installMenu;
-        
-        private Localizations L => Localizations.Inst;
-        
-        [SuppressMessage("ReSharper", "UnusedMember.Global")]
-        public void EditorWindow()
-        {
-            titleContent = new GUIContent(L.INST_TITLE);
-        }
-        
-        [MenuItem("Window/bd_/AVRC Installer")]
-        internal static void DisplayWindow(AvrcParameters p = null)
-        {
-            var window = GetWindow<InstallWindow>(Localizations.Inst.INST_TITLE.text);
 
-            if (p != null)
-            {
-                window._params = p;
-            }
-        }
+        private bool showDetails = false;
+
+        private Localizations L => Localizations.Inst;
 
         private void OnEnable()
         {
             InitSavedState();
         }
-
-        private bool showDetails = false;
 
         private void OnGUI()
         {
@@ -67,11 +50,11 @@ namespace net.fushizen.avrc
 
             // ReSharper disable once HeapView.BoxingAllocation
             var roleProp = _bindingConfigSO.FindProperty(nameof(_bindingConfig.role));
-            roleProp.enumValueIndex = EditorGUILayout.Popup("Role", (int)roleProp.enumValueIndex, 
-                new string[] { "", "TX", "RX" }
+            roleProp.enumValueIndex = EditorGUILayout.Popup("Role", (int) roleProp.enumValueIndex,
+                new string[] {"", "TX", "RX"}
             );
 
-            if (roleProp.enumValueIndex != (int)AvrcBindingConfiguration.Role.RX)
+            if (roleProp.enumValueIndex != (int) AvrcBindingConfiguration.Role.RX)
             {
                 using (new EditorGUI.DisabledGroupScope(_params == null || _params.embeddedExpressionsMenu == null))
                 {
@@ -102,7 +85,7 @@ namespace net.fushizen.avrc
                     }
                 }
             }
-            
+
             DrawRemapPanel();
 
             var prechecks = IsReadyToInstall();
@@ -115,7 +98,7 @@ namespace net.fushizen.avrc
                 }
             }
 
-            bool hasThisAvrc = (_params != null && _targetAvatar != null) 
+            bool hasThisAvrc = (_params != null && _targetAvatar != null)
                                && AvrcUninstall.HasAvrcConfiguration(_targetAvatar, _params);
             bool hasAnyAvrc = _targetAvatar != null && AvrcUninstall.HasAvrcConfiguration(_targetAvatar, null);
 
@@ -126,12 +109,30 @@ namespace net.fushizen.avrc
                     AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, _params);
                 }
             }
+
             using (new EditorGUI.DisabledGroupScope(!hasAnyAvrc))
             {
                 if (GUILayout.Button(L.INST_UNINSTALL_ALL))
                 {
                     AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, null);
                 }
+            }
+        }
+
+        [SuppressMessage("ReSharper", "UnusedMember.Global")]
+        public void EditorWindow()
+        {
+            titleContent = new GUIContent(L.INST_TITLE);
+        }
+
+        [MenuItem("Window/bd_/AVRC Installer")]
+        internal static void DisplayWindow(AvrcParameters p = null)
+        {
+            var window = GetWindow<InstallWindow>(Localizations.Inst.INST_TITLE.text);
+
+            if (p != null)
+            {
+                window._params = p;
             }
         }
 
@@ -170,7 +171,9 @@ namespace net.fushizen.avrc
             if (rootTransform != null)
             {
                 root = rootTransform.gameObject;
-            } else {
+            }
+            else
+            {
                 root = new GameObject
                 {
                     transform =
@@ -202,12 +205,13 @@ namespace net.fushizen.avrc
             ok = ok && Precheck($"Duplicate parameter name [{duplicateName}]", duplicateName == null);
             if (_bindingConfig.role == AvrcBindingConfiguration.Role.RX)
             {
-                ok = ok && Precheck($"Invalid timeout value {_bindingConfig.timeoutSeconds}", _bindingConfig.timeoutSeconds > 1.0f);
+                ok = ok && Precheck($"Invalid timeout value {_bindingConfig.timeoutSeconds}",
+                    _bindingConfig.timeoutSeconds > 1.0f);
             }
 
             return ok;
         }
-        
+
         private bool IsTargetMenuFull()
         {
             if (_installMenu == null) return false;
@@ -218,7 +222,7 @@ namespace net.fushizen.avrc
         private bool Precheck(string message, bool ok)
         {
             if (ok) return ok;
-            
+
             EditorGUILayout.HelpBox(message, MessageType.Error);
 
             return false;
@@ -243,15 +247,16 @@ namespace net.fushizen.avrc
             }
 
             AvrcNames names = new AvrcNames(_bindingConfig);
-            
+
             MenuCloner cloner = new MenuCloner(
                 new SerializedObject(menuRef).FindProperty(nameof(MenuReference.menu)),
                 rootTargetMenu,
                 names.ParameterMap
             );
-            
+
             menuRef.menu = rootTargetMenu;
             cloner.SyncMenus(_params.embeddedExpressionsMenu);
+
 
             if (_installMenu.controls.All(c => c.subMenu != rootTargetMenu))
             {
@@ -265,7 +270,7 @@ namespace net.fushizen.avrc
 
             EditorUtility.SetDirty(_installMenu);
         }
-        
+
         #region Remap panel
 
         private AvrcBindingConfiguration _bindingConfig;
@@ -274,7 +279,7 @@ namespace net.fushizen.avrc
         private SerializedObject _bindingConfigSO;
         private SerializedProperty _remapProp;
         private string duplicateName = null;
-        
+
         AvrcNames ApplyNameOverrides()
         {
             duplicateName = null;
@@ -283,6 +288,7 @@ namespace net.fushizen.avrc
                 _cachedNames = null;
                 return null;
             }
+
             _cachedNames = new AvrcNames(_params);
             HashSet<string> mappedParams = new HashSet<string>();
             HashSet<string> knownParams = new HashSet<string>();
@@ -290,6 +296,7 @@ namespace net.fushizen.avrc
             {
                 knownParams.Add(specParam.name);
             }
+
             var mappings = _bindingConfig.parameterMappings
                 .Where(p => knownParams.Contains(p.avrcParameterName)).ToArray();
             foreach (var alreadyMapped in mappings)
@@ -308,6 +315,7 @@ namespace net.fushizen.avrc
                     duplicateName = mappedName;
                 }
             }
+
             foreach (var newParam in knownParams)
             {
                 _bindingConfig.parameterMappings.Add(new ParameterMapping()
@@ -316,14 +324,14 @@ namespace net.fushizen.avrc
                     remappedParameterName = ""
                 });
             }
-            
+
             _bindingConfig.parameterMappings.Sort(
                 (a, b) => String.Compare(a.avrcParameterName, b.avrcParameterName, StringComparison.CurrentCulture)
             );
-            
+
             return _cachedNames;
         }
-        
+
         void InitSavedState()
         {
             _remapList = null;
@@ -335,7 +343,7 @@ namespace net.fushizen.avrc
 
                 return;
             }
-            
+
             _cachedNames = new AvrcNames(_params);
             _bindingConfig = AvrcStateSaver.LoadState(_cachedNames, _targetAvatar);
             ApplyNameOverrides();
@@ -354,12 +362,13 @@ namespace net.fushizen.avrc
 
         private string DefaultNameMapping(ParameterMapping entry)
         {
-            return _bindingConfig.role == AvrcBindingConfiguration.Role.TX ? $"AVRC_{_params.prefix}_{entry.avrcParameterName}" : entry.avrcParameterName;
+            return _bindingConfig.role == AvrcBindingConfiguration.Role.TX
+                ? $"AVRC_{_params.prefix}_{entry.avrcParameterName}"
+                : entry.avrcParameterName;
         }
 
         private void OnDrawListElement(Rect rect, int index, bool isActive, bool isFocused)
         {
-
             Rect labelRect = new Rect()
             {
                 width = labelWidth + 10,
@@ -367,11 +376,13 @@ namespace net.fushizen.avrc
                 x = rect.x,
                 y = rect.y
             };
-            GUI.Label(labelRect, new GUIContent(_bindingConfig.parameterMappings[index].avrcParameterName), GUI.skin.label);
+            GUI.Label(labelRect, new GUIContent(_bindingConfig.parameterMappings[index].avrcParameterName),
+                GUI.skin.label);
             rect.x += labelRect.width;
             rect.width -= labelRect.width;
 
-            var prop = _remapProp.GetArrayElementAtIndex(index).FindPropertyRelative(nameof(ParameterMapping.remappedParameterName));
+            var prop = _remapProp.GetArrayElementAtIndex(index)
+                .FindPropertyRelative(nameof(ParameterMapping.remappedParameterName));
             EditorGUI.PropertyField(rect, prop, GUIContent.none);
 
             if (prop.stringValue.Equals(""))
@@ -379,7 +390,7 @@ namespace net.fushizen.avrc
                 GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
                 {
                     fontStyle = FontStyle.Italic,
-                    normal = { textColor = Color.gray}
+                    normal = {textColor = Color.gray}
                 };
                 EditorGUI.LabelField(
                     rect,
@@ -392,7 +403,7 @@ namespace net.fushizen.avrc
         void DrawRemapPanel()
         {
             if (_remapList == null) return;
-            
+
             // Verify that the remap list is up to date
             if (_bindingConfig.parameterMappings.Count != _params.avrcParams.Count)
             {
@@ -419,7 +430,8 @@ namespace net.fushizen.avrc
 
             foreach (var p in _bindingConfig.parameterMappings)
             {
-                labelWidth = Mathf.Max(labelWidth, new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcParameterName)).x);
+                labelWidth = Mathf.Max(labelWidth,
+                    new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcParameterName)).x);
             }
 
             EditorGUILayout.HelpBox(
@@ -428,7 +440,7 @@ namespace net.fushizen.avrc
                 MessageType.Info);
 
             EditorGUI.BeginChangeCheck();
-            
+
             Rect rect = GUILayoutUtility.GetRect(100, _remapList.GetHeight(), new GUIStyle());
             _remapList.DoList(rect);
 
@@ -438,8 +450,7 @@ namespace net.fushizen.avrc
                 ApplyNameOverrides();
             }
         }
-    
+
         #endregion
-        
     }
 }

@@ -4,9 +4,9 @@ namespace net.fushizen.avrc
 {
     internal class AvrcNames
     {
-        internal readonly string Prefix;
-
         internal readonly Dictionary<string, string> ParameterMap;
+
+        internal readonly string Prefix;
 
         internal AvrcNames(AvrcBindingConfiguration binding) : this(binding.parameters, binding.role)
         {
@@ -36,11 +36,11 @@ namespace net.fushizen.avrc
 
         internal string PubParamPrefix => $"AVRC_{Prefix}_";
         internal string ParamPrefix => $"_AVRCI_{Prefix}_";
-        
+
         internal string PubParamEitherLocal => $"AVRC_{Prefix}_EitherLocal";
         internal string PubParamPeerPresent => $"AVRC_{Prefix}_PeerPresent";
         internal string PubParamPeerLocal => $"AVRC_{Prefix}_PeerLocal";
-        
+
         internal string ParamRxPresent => $"_AVRCI_{Prefix}_RxPresent";
         internal string ParamTxProximity => $"_AVRCI_{Prefix}_TxProximity";
         internal string ParamTxActive => $"_AVRCI_{Prefix}_TxActive";

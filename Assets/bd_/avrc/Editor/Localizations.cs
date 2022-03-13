@@ -8,12 +8,109 @@ namespace net.fushizen.avrc
     [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class Localizations
     {
+        private static Localizations EN = new Localizations()
+        {
+            PROP_TYPE_NAMES = new GUIContent[]
+            {
+                new GUIContent("Bool"),
+                new GUIContent("Int"),
+            }
+        };
+
+        private static Localizations JA = new Localizations()
+        {
+            // Parameters generator
+            LANG_SWITCHER = new GUIContent("言語: 日本語"),
+            GP_FOLDOUT = new GUIContent("メニューから生成"),
+            GP_REF_AVATAR = new GUIContent("参照するアバター", "AVRC はこのアバターのパラメータを使用して新しいパラメータを構成します"),
+            GP_ERR_NO_PARAMS = "アバターパラメータアセットが設定されていません",
+            GP_ERR_NO_NEW_PARAMS = "新しいパラメータがありません",
+            GP_FOUND_PARAMS = "パラメータを検出しました: {0}",
+            GP_ADD_PARAMS = new GUIContent("パラメータを追加"),
+            GP_ERR_DUPLICATE = "パラメータ名が重複しています: {0}",
+            GP_NOTDEF = "パラメータが定義されていません: {0}",
+            GP_ERR_PUPPET_TYPE = "ペットパラメータはFloat型ではありません: {0}",
+            GP_ERR_PRIMARY_TYPE = "プライマリパラメータはInt型かBool型である必要があります: {0}",
+
+            // AVRC Parameters inspector
+            AP_INSTALL = new GUIContent("インストール", "インストールウィンドウを開きます"),
+            AP_SRC_MENU = new GUIContent("内包メニュー", "AVRCアセットに内包するメニューアセット"),
+            AP_PREFIX = new GUIContent("プレフィックス", "生成されるレイヤーとオブジェクトの名前に付けます"),
+            AP_PARAMETERS = new GUIContent("パラメータ"),
+            AP_RX_PARAM = new GUIContent("受信パラメータ"),
+            AP_RANGE = new GUIContent("範囲"),
+
+            // Installer
+            INST_TITLE = new GUIContent("AVRC Installer"),
+            INST_PARAMS = new GUIContent("パラメータアセット"),
+            INST_AVATAR = new GUIContent("対象アバター", "インストールするアバター"),
+            INST_MENU = new GUIContent("メニュー", "内包メニューをこのメニューに追加します"),
+            INST_TX = new GUIContent("送信機でインストール", "AVRCパラメータを送信機に設定します"),
+            INST_RX = new GUIContent("受信機でインストール", "AVRCパラメータを受信機に設定します"),
+            INST_UNINSTALL = new GUIContent("アンインストール", "このAVRCパラメータをアンインストールします"),
+            INST_UNINSTALL_ALL = new GUIContent("全てのAVRCパラメータをアンインストール", "全てのAVRCパラメータをアンインストールします"),
+            INST_ERR_NO_PARAMS = "AVRCパラメータアセットが設定されていません",
+            INST_NO_PREFIX = "プレフィックスが設定されていません",
+            INST_NO_AVATAR = "対象アバターを選択してください",
+            INST_NO_FX = "対象アバターにはFXレイヤーが必要です",
+            INST_MENU_FULL = "選択されたメニューは満杯です",
+        };
+
+        private static Localizations Current = null;
+
+        private GUIContent[] PROP_TYPE_NAMES_ = System.Enum.GetNames(typeof(AvrcParameters.AvrcParameterType))
+            .Select(n => new GUIContent(n)).ToArray();
+
         private Localizations()
         {
         }
 
         public GUIContent LANG_SWITCHER { get; private set; }
             = new GUIContent("Language: English");
+
+        public GUIContent[] PROP_TYPE_NAMES
+        {
+            get => PROP_TYPE_NAMES_.Clone() as GUIContent[];
+            private set => PROP_TYPE_NAMES_ = value;
+        }
+
+        public static Localizations Inst
+        {
+            get
+            {
+                if (Current == null)
+                {
+                    switch (AvrcPrefs.Get().Language)
+                    {
+                        case Language.JA:
+                            Current = JA;
+                            break;
+                        default:
+                            Current = EN;
+                            break;
+                    }
+                }
+
+                return Current;
+            }
+        }
+
+        internal static void SetLanguage(Language lang)
+        {
+            var prefs = AvrcPrefs.Get();
+            prefs.Language = lang;
+            Current = null;
+
+            EditorUtility.SetDirty(prefs);
+        }
+
+        internal static void SwitchLanguageButton()
+        {
+            if (GUILayout.Button(Inst.LANG_SWITCHER))
+            {
+                SetLanguage(AvrcPrefs.Get().Language == Language.EN ? Language.JA : Language.EN);
+            }
+        }
 
         #region Parameters generator
 
@@ -81,102 +178,5 @@ namespace net.fushizen.avrc
         public string INST_MENU_FULL { get; private set; } = "Selected submenu is full";
 
         #endregion
-
-        private GUIContent[] PROP_TYPE_NAMES_ = System.Enum.GetNames(typeof(AvrcParameters.AvrcParameterType))
-            .Select(n => new GUIContent(n)).ToArray();
-
-        public GUIContent[] PROP_TYPE_NAMES
-        {
-            get => PROP_TYPE_NAMES_.Clone() as GUIContent[];
-            private set => PROP_TYPE_NAMES_ = value;
-        }
-
-        private static Localizations EN = new Localizations()
-        {
-            PROP_TYPE_NAMES = new GUIContent[]
-            {
-                new GUIContent("Bool"),
-                new GUIContent("Int"),
-            }
-        };
-
-        private static Localizations JA = new Localizations()
-        {
-            // Parameters generator
-            LANG_SWITCHER = new GUIContent("言語: 日本語"),
-            GP_FOLDOUT = new GUIContent("メニューから生成"),
-            GP_REF_AVATAR = new GUIContent("参照するアバター", "AVRC はこのアバターのパラメータを使用して新しいパラメータを構成します"),
-            GP_ERR_NO_PARAMS = "アバターパラメータアセットが設定されていません",
-            GP_ERR_NO_NEW_PARAMS = "新しいパラメータがありません",
-            GP_FOUND_PARAMS = "パラメータを検出しました: {0}",
-            GP_ADD_PARAMS = new GUIContent("パラメータを追加"),
-            GP_ERR_DUPLICATE = "パラメータ名が重複しています: {0}",
-            GP_NOTDEF = "パラメータが定義されていません: {0}",
-            GP_ERR_PUPPET_TYPE = "ペットパラメータはFloat型ではありません: {0}",
-            GP_ERR_PRIMARY_TYPE = "プライマリパラメータはInt型かBool型である必要があります: {0}",
-
-            // AVRC Parameters inspector
-            AP_INSTALL = new GUIContent("インストール", "インストールウィンドウを開きます"),
-            AP_SRC_MENU = new GUIContent("内包メニュー", "AVRCアセットに内包するメニューアセット"),
-            AP_PREFIX = new GUIContent("プレフィックス", "生成されるレイヤーとオブジェクトの名前に付けます"),
-            AP_PARAMETERS = new GUIContent("パラメータ"),
-            AP_RX_PARAM = new GUIContent("受信パラメータ"),
-            AP_RANGE = new GUIContent("範囲"),
-
-            // Installer
-            INST_TITLE = new GUIContent("AVRC Installer"),
-            INST_PARAMS = new GUIContent("パラメータアセット"),
-            INST_AVATAR = new GUIContent("対象アバター", "インストールするアバター"),
-            INST_MENU = new GUIContent("メニュー", "内包メニューをこのメニューに追加します"),
-            INST_TX = new GUIContent("送信機でインストール", "AVRCパラメータを送信機に設定します"),
-            INST_RX = new GUIContent("受信機でインストール", "AVRCパラメータを受信機に設定します"),
-            INST_UNINSTALL = new GUIContent("アンインストール", "このAVRCパラメータをアンインストールします"),
-            INST_UNINSTALL_ALL = new GUIContent("全てのAVRCパラメータをアンインストール", "全てのAVRCパラメータをアンインストールします"),
-            INST_ERR_NO_PARAMS = "AVRCパラメータアセットが設定されていません",
-            INST_NO_PREFIX = "プレフィックスが設定されていません",
-            INST_NO_AVATAR = "対象アバターを選択してください",
-            INST_NO_FX = "対象アバターにはFXレイヤーが必要です",
-            INST_MENU_FULL = "選択されたメニューは満杯です",
-        };
-
-        private static Localizations Current = null;
-
-        public static Localizations Inst
-        {
-            get
-            {
-                if (Current == null)
-                {
-                    switch (AvrcPrefs.Get().Language)
-                    {
-                        case Language.JA:
-                            Current = JA;
-                            break;
-                        default:
-                            Current = EN;
-                            break;
-                    }
-                }
-
-                return Current;
-            }
-        }
-
-        internal static void SetLanguage(Language lang)
-        {
-            var prefs = AvrcPrefs.Get();
-            prefs.Language = lang;
-            Current = null;
-
-            EditorUtility.SetDirty(prefs);
-        }
-
-        internal static void SwitchLanguageButton()
-        {
-            if (GUILayout.Button(Inst.LANG_SWITCHER))
-            {
-                SetLanguage(AvrcPrefs.Get().Language == Language.EN ? Language.JA : Language.EN);
-            }
-        }
     }
 }

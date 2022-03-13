@@ -18,17 +18,18 @@ namespace net.fushizen.avrc
             {
                 return avatarDescriptor.transform.Find(names.ObjectPath) != null
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
-                            .Any(layer => layer.name.StartsWith(names.LayerPrefix));
+                       .Any(layer => layer.name.StartsWith(names.LayerPrefix));
             }
             else
             {
                 return avatarDescriptor.transform.Find("AVRC") != null
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
-                            .Any(layer => layer.name.StartsWith("_AVRC"));
+                       .Any(layer => layer.name.StartsWith("_AVRC"));
             }
         }
 
-        public static void RemoveAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters = null)
+        public static void RemoveAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor,
+            AvrcParameters parameters = null)
         {
             var names = parameters != null ? new AvrcNames(parameters) : null;
             var fx = AvrcAnimatorUtils.FindFxLayer(avatarDescriptor);
@@ -39,7 +40,7 @@ namespace net.fushizen.avrc
             var paramPrefixes = names != null
                 ? new string[] {names.ParamPrefix, names.PubParamPrefix}
                 : new string[] {"AVRC_", "_AVRCI_"};
-            
+
             // Purge objects
             var objectRootName = parameters != null ? names.ObjectPath : "AVRC";
 
@@ -64,7 +65,8 @@ namespace net.fushizen.avrc
                     EditorSceneManager.MarkSceneDirty(scene);
                 }
             }
-            
+
+
             // Purge layers
             if (fx != null)
             {

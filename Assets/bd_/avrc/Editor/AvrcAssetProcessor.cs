@@ -11,7 +11,8 @@ namespace net.fushizen.avrc
         private static Dictionary<string, MenuCloner> avrcMenuPaths = new Dictionary<string, MenuCloner>();
         private static HashSet<string> sourceMenuPaths = new HashSet<string>();
 
-        static AvrcAssetProcessorCallbacks() {
+        static AvrcAssetProcessorCallbacks()
+        {
             EditorApplication.delayCall += () =>
             {
                 foreach (var guid in AssetDatabase.FindAssets("t:AvrcParameters"))
@@ -23,7 +24,7 @@ namespace net.fushizen.avrc
                         initClones(paramsAsset);
                     }
                 }
-                
+
                 UpdateMenuAssets();
             };
         }
@@ -38,7 +39,7 @@ namespace net.fushizen.avrc
                 if (paramsAsset != null)
                 {
                     initClones(paramsAsset);
-                    
+
                     UpdateMenuAssets();
                 }
             };
@@ -50,8 +51,45 @@ namespace net.fushizen.avrc
             {
                 UpdateMenuAssets();
             }
-            
+
             return AssetDeleteResult.DidNotDelete;
+        }
+
+        private static AssetMoveResult OnWillMoveAsset(string sourcePath, string destinationPath)
+        {
+            if (avrcMenuPaths.ContainsKey(sourcePath))
+            {
+                avrcMenuPaths[destinationPath] = avrcMenuPaths[sourcePath];
+                avrcMenuPaths.Remove(sourcePath);
+            }
+
+            return AssetMoveResult.DidNotMove;
+        }
+
+        static string[] OnWillSaveAssets(string[] paths)
+        {
+            var pathList = new HashSet<string>(paths);
+
+            if (paths.Any(p => sourceMenuPaths.Contains(p)))
+            {
+                foreach (var cloner in avrcMenuPaths.Values)
+                {
+                    if (cloner.SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu))
+                    {
+                        pathList.Add(cloner.ContainingPath);
+                    }
+                }
+
+                paths = pathList.ToArray();
+            }
+
+            foreach (var p in paths.Where(avrcMenuPaths.ContainsKey))
+            {
+                var cloner = avrcMenuPaths[p];
+                avrcMenuPaths[p].SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu);
+            }
+
+            return paths;
         }
 
         /// <summary>
@@ -82,42 +120,6 @@ namespace net.fushizen.avrc
                     .SelectMany(v => v.SourcePaths)
                     .Where(p => p != null && !p.Equals(""))
             );
-        } 
-
-        private static AssetMoveResult OnWillMoveAsset(string sourcePath, string destinationPath)
-        {
-            if (avrcMenuPaths.ContainsKey(sourcePath))
-            {
-                avrcMenuPaths[destinationPath] = avrcMenuPaths[sourcePath];
-                avrcMenuPaths.Remove(sourcePath);
-            }
-            return AssetMoveResult.DidNotMove;
-        }
-        
-        static string[] OnWillSaveAssets(string[] paths)
-        {
-            var pathList = new HashSet<string>(paths);
-
-            if (paths.Any(p => sourceMenuPaths.Contains(p)))
-            {
-                foreach (var cloner in avrcMenuPaths.Values)
-                {
-                    if (cloner.SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu))
-                    {
-                        pathList.Add(cloner.ContainingPath);
-                    }
-                }
-
-                paths = pathList.ToArray();
-            }
-
-            foreach (var p in paths.Where(avrcMenuPaths.ContainsKey))
-            {
-                var cloner = avrcMenuPaths[p];
-                avrcMenuPaths[p].SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu);
-            }
-
-            return paths;
         }
     }
 }

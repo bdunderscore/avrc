@@ -15,13 +15,14 @@ namespace net.fushizen.avrc
                 AssetDatabase.GUIDToAssetPath(GUID_PREFAB_ORIGIN)
             );
         }
-        
-        internal static AnimationClip EmptyClip() {
+
+        internal static AnimationClip EmptyClip()
+        {
             return AssetDatabase.LoadAssetAtPath<AnimationClip>(
                 AssetDatabase.GUIDToAssetPath(GUID_EMPTY_CLIP)
             );
         }
-        
+
         internal static string GetGeneratedAssetsFolder()
         {
             var path = AssetDatabase.GUIDToAssetPath(GUID_PREFAB_ORIGIN);
@@ -31,6 +32,7 @@ namespace net.fushizen.avrc
             {
                 AssetDatabase.CreateFolder(dir, "Generated");
             }
+
             return generatedPath;
         }
     }

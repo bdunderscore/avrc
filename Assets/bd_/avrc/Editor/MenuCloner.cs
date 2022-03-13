@@ -12,9 +12,11 @@ namespace net.fushizen.avrc
     /// </summary>
     public class MenuCloner
     {
-        private readonly SerializedProperty _dstProperty;
         private readonly UnityEngine.Object _containingObject;
+        private readonly SerializedProperty _dstProperty;
         private readonly bool _notReady;
+
+        private Dictionary<string, string> _paramRemapDict;
 
         private HashSet<VRCExpressionsMenu> enqueuedAssets = new HashSet<VRCExpressionsMenu>();
         private Queue<VRCExpressionsMenu> pendingClone = new Queue<VRCExpressionsMenu>();
@@ -22,7 +24,20 @@ namespace net.fushizen.avrc
         private Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> srcToCloneMap
             = new Dictionary<VRCExpressionsMenu, VRCExpressionsMenu>();
 
-        private Dictionary<string, string> _paramRemapDict;
+        public MenuCloner(
+            SerializedProperty dstProperty,
+            Object containingObject,
+            Dictionary<string, string> paramRemapDict = null
+        )
+        {
+            _dstProperty = dstProperty;
+            _containingObject = containingObject;
+            _paramRemapDict = paramRemapDict ?? new Dictionary<string, string>();
+
+            var path = ContainingPath;
+            _notReady = path == null || path.Equals("");
+            if (_notReady) return;
+        }
 
         /// <summary>
         /// Returns the set of asset paths that correspond to the source menus (including submenus) for this cloner. +        /// </summary>
@@ -44,21 +59,6 @@ namespace net.fushizen.avrc
         internal string ContainingPath
         {
             get { return AssetDatabase.GetAssetPath(ContainingObject); }
-        }
-
-        public MenuCloner(
-            SerializedProperty dstProperty,
-            Object containingObject,
-            Dictionary<string, string> paramRemapDict = null
-        )
-        {
-            _dstProperty = dstProperty;
-            _containingObject = containingObject;
-            _paramRemapDict = paramRemapDict ?? new Dictionary<string, string>();
-
-            var path = ContainingPath;
-            _notReady = path == null || path.Equals("");
-            if (_notReady) return;
         }
 
         public static MenuCloner InitCloner(AvrcParameters avrcParameters)
@@ -146,13 +146,13 @@ namespace net.fushizen.avrc
                             targetProp.stringValue = remapped;
                             dirty = true;
                         }
-                        
+
                         // skip the inner array
                         enterChildren = false;
                     }
                 }
                 else if (iter.propertyPath.Contains("subParameters.Array.data") &&
-                         iter.propertyPath.EndsWith(".name") && 
+                         iter.propertyPath.EndsWith(".name") &&
                          iter.propertyType == SerializedPropertyType.String)
                 {
                     if (_paramRemapDict.ContainsKey(iter.stringValue))
@@ -164,6 +164,7 @@ namespace net.fushizen.avrc
                             targetProp.stringValue = remapped;
                             dirty = true;
                         }
+
                         // skip the inner array
                         enterChildren = false;
                     }

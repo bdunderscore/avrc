@@ -9,45 +9,44 @@ using Random = UnityEngine.Random;
 
 namespace net.fushizen.avrc
 {
-    
     [CustomEditor(typeof(AvrcParameters))]
     public class AvrcParametersInspector : Editor
     {
+        private AvrcParametersGenerator _paramsGen;
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
-        private AvrcParametersGenerator _paramsGen;
-        
+
         private Localizations L => Localizations.Inst;
 
         [SuppressMessage("ReSharper", "HeapView.DelegateAllocation")]
         private void OnEnable()
         {
             _paramsProp = serializedObject.FindProperty("avrcParams");
-            
+
             _paramsList = new ReorderableList(serializedObject, _paramsProp, true, true, true, true)
             {
                 drawHeaderCallback = OnDrawListHeader,
                 drawElementCallback = OnDrawListElement,
                 elementHeightCallback = OnElementHeight
             };
-            
+
             _paramsGen = new AvrcParametersGenerator(target as AvrcParameters);
         }
 
         public override void OnInspectorGUI()
-        {            
+        {
             // ReSharper disable once LocalVariableHidesMember
             AvrcParameters target = this.target as AvrcParameters;
 
             Localizations.SwitchLanguageButton();
-            
+
             if (GUILayout.Button(L.AP_INSTALL))
             {
                 InstallWindow.DisplayWindow(target);
             }
-            
+
             Debug.Assert(target != null, nameof(target) + " != null");
-            
+
             if (target.baseOffset.sqrMagnitude < 1)
             {
                 target.baseOffset = new Vector3(
@@ -64,6 +63,7 @@ namespace net.fushizen.avrc
             var srcMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu));
             var srcMenu = srcMenuProp.objectReferenceValue;
             EditorGUILayout.PropertyField(srcMenuProp, L.AP_SRC_MENU);
+
             if (srcMenu != srcMenuProp.objectReferenceValue && srcMenuProp.objectReferenceValue == null)
             {
                 // Clear the destination menu property so we'll clean up the cloned assets.
@@ -75,17 +75,18 @@ namespace net.fushizen.avrc
             {
                 MenuCloner.InitCloner(target)?.SyncMenus(target.sourceExpressionMenu);
             }*/
-            
+
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)), L.AP_PREFIX);
             EditorGUILayout.Separator();
-       
+
             Rect rect = GUILayoutUtility.GetRect(100, _paramsList.GetHeight(), new GUIStyle());
             _paramsList.DoList(rect);
 
             serializedObject.ApplyModifiedProperties();
-            
+
             _paramsGen.GenerateParametersUI();
         }
+
         private float OnElementHeight(int index)
         {
             int lines = 1;
@@ -98,7 +99,7 @@ namespace net.fushizen.avrc
                 }
             }
 
-            return ( 4 + EditorGUIUtility.singleLineHeight + 4 ) * lines - 4;
+            return (4 + EditorGUIUtility.singleLineHeight + 4) * lines - 4;
         }
 
         private static bool ElementHasRangeProp(SerializedProperty elem)
@@ -116,7 +117,7 @@ namespace net.fushizen.avrc
             return tyName == AvrcParameterType.Int || tyName == AvrcParameterType.Bool;
         }
 
-        private static T GetEnumProp<T>(string name, SerializedProperty elem) where T: Enum
+        private static T GetEnumProp<T>(string name, SerializedProperty elem) where T : Enum
         {
             var tyProp = elem.FindPropertyRelative(name);
             if (tyProp.enumValueIndex < 0 || tyProp.enumValueIndex >= tyProp.enumNames.Length)
@@ -130,25 +131,23 @@ namespace net.fushizen.avrc
                 return default;
             }
 
-            return (T)values.GetValue(tyProp.enumValueIndex);
+            return (T) values.GetValue(tyProp.enumValueIndex);
         }
 
         private void OnDrawListHeader(Rect rect)
         {
             EditorGUI.LabelField(rect, L.AP_PARAMETERS);
             rect.y += 4 + EditorGUIUtility.singleLineHeight;
-            
         }
-        
+
         private void OnDrawListElement(Rect rect, int index, bool isActive, bool isFocused)
         {
-            
             //UnityEngine.Debug.Log($"Element: {rect.x} {rect.y}");
             var initialRect = rect;
             SerializedProperty element = _paramsProp.GetArrayElementAtIndex(index);
 
             if (element == null) return;
-            
+
             rect.y += 2;
             rect.height = EditorGUIUtility.singleLineHeight;
 
@@ -162,7 +161,7 @@ namespace net.fushizen.avrc
                 var mode = element.FindPropertyRelative(nameof(AvrcParameter.syncDirection));
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 80), mode, GUIContent.none);
             }
-            
+
             var propName = element.FindPropertyRelative("name");
             EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, rect.width),
                 propName,
@@ -183,7 +182,5 @@ namespace net.fushizen.avrc
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 30), maxVal, GUIContent.none);
             }
         }
-
-
     }
 }

@@ -16,17 +16,20 @@ namespace net.fushizen.avrc
         public string avrcParameterName;
         public string remappedParameterName;
     }
+
     public class AvrcBindingConfiguration : StateMachineBehaviour
     {
-        public AvrcParameters parameters;
-
         [Serializable]
         [SuppressMessage("ReSharper", "InconsistentNaming")]
         public enum Role
         {
-            Init, TX, RX
+            Init,
+            TX,
+            RX
         }
-        
+
+        public AvrcParameters parameters;
+
         public List<ParameterMapping> parameterMappings = new List<ParameterMapping>();
         public Role role = Role.Init;
         public float timeoutSeconds = 5.0f;
@@ -94,7 +97,7 @@ namespace net.fushizen.avrc
                 AssetDatabase.AddObjectToAsset(existingState, assetPath);
                 EditorUtility.SetDirty(entryState);
             }
-            
+
             EditorUtility.CopySerialized(state, existingState);
             existingState.hideFlags = HideFlags.HideInInspector;
             EditorUtility.SetDirty(existingState);

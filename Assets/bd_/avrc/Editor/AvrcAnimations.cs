@@ -6,17 +6,9 @@ namespace net.fushizen.avrc
     internal class AvrcAnimations
     {
         private const float BOUNDS_SIZE = 1000f;
-        internal delegate AnimationClip GetClipDelegate();
-
-        internal enum LocalState
-        {
-            Unknown,
-            OwnerLocal,
-            PeerLocal
-        }
+        private readonly AvrcNames _names;
 
         private readonly AvrcParameters _parameters;
-        private readonly AvrcNames _names;
 
         public AvrcAnimations(AvrcParameters parameters, AvrcNames names)
         {
@@ -38,19 +30,19 @@ namespace net.fushizen.avrc
             return clip;
             */
         }
-        
+
         internal AnimationClip LinearClip(string path, Vector3 baseOffset)
         {
             AnimationClip clip = new AnimationClip();
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x", 
+            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x",
                 AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y", 
+            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y",
                 AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z", 
+            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
                 AnimationCurve.Linear(
-                    0, AvrcObjects.RadiusScale * (baseOffset.z + 1), 
+                    0, AvrcObjects.RadiusScale * (baseOffset.z + 1),
                     1, AvrcObjects.RadiusScale * (baseOffset.z + 0.5f)
-            ));
+                ));
 
             return clip;
         }
@@ -58,12 +50,13 @@ namespace net.fushizen.avrc
         internal AnimationClip ConstantClip(string path, Vector3 baseOffset, float value)
         {
             AnimationClip clip = new AnimationClip();
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x", 
+            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x",
                 AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y", 
+            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y",
                 AnimationCurve.Constant(0, 1, 0));
             clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
-                AnimationCurve.Constant(0, 1, AvrcObjects.RadiusScale * (baseOffset.z + Mathf.LerpUnclamped(1, 0.5f, value))));
+                AnimationCurve.Constant(0, 1,
+                    AvrcObjects.RadiusScale * (baseOffset.z + Mathf.LerpUnclamped(1, 0.5f, value))));
 
             return clip;
         }
@@ -78,12 +71,12 @@ namespace net.fushizen.avrc
             {
                 // When local we offset to the opposite side of the 
                 Vector3 offset = -AvrcObjects.PresencePositionOffset;
-                
-                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.x", 
+
+                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.x",
                     AnimationCurve.Constant(0, 1, offset.x));
-                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.y", 
+                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.y",
                     AnimationCurve.Constant(0, 1, offset.y));
-                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.z", 
+                clip.SetCurve(sendingSelfPresent, typeof(Transform), "m_LocalPosition.z",
                     AnimationCurve.Constant(0, 1, offset.z));
             }
             else if (local == LocalState.PeerLocal)
@@ -95,11 +88,11 @@ namespace net.fushizen.avrc
                 clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.z",
                     AnimationCurve.Constant(0, 1, BOUNDS_SIZE));
             }
-            
+
             foreach (var param in _parameters.avrcParams)
             {
                 int isActive = local != LocalState.Unknown ? 1 : 0;
-                
+
                 clip.SetCurve(
                     _names.ParameterPath(param), typeof(GameObject), "m_IsActive",
                     AnimationCurve.Constant(0, 1, isActive));
@@ -111,13 +104,13 @@ namespace net.fushizen.avrc
                         AnimationCurve.Constant(0, 1, isActive));
                 }
             }
-            
+
             return clip;
         }
 
-        
+
         // TODO: Actually needs the constraint enabled at all times
-        
+
         /// <summary>
         /// Creates a clip which runs on the transmitter and enables certain objects when the receiver is the local
         /// player's avatar. Specifically, we enable the constraint and each transmitted parameter's trigger.
@@ -132,6 +125,15 @@ namespace net.fushizen.avrc
         internal AnimationClip TransmitterPresentClip(LocalState local)
         {
             return EnableConstraintClip(local, _names.ObjTxPresent);
+        }
+
+        internal delegate AnimationClip GetClipDelegate();
+
+        internal enum LocalState
+        {
+            Unknown,
+            OwnerLocal,
+            PeerLocal
         }
     }
 }
