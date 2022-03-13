@@ -138,29 +138,6 @@ namespace net.fushizen.avrc
             return rootStateMachine;
         }
 
-        protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
-        {
-            // No TX work needed for the IsLocal layers
-            return null;
-        }
-
-        protected override AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter)
-        {
-            AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
-            var entry = rootStateMachine.AddState("Entry");
-
-            entry.motion = Animations.Named(
-                Names.Prefix + "_" + parameter.name,
-                () => Animations.LinearClip(Names.ParameterPath(parameter), Parameters.baseOffset)
-            );
-
-            entry.timeParameterActive = true;
-            entry.timeParameter = Names.UserParameter(parameter);
-            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Float);
-
-            return rootStateMachine;
-        }
-
         protected override AnimatorStateMachine OneWayParamLayer(
             AvrcParameters.AvrcParameter parameter,
             int values,

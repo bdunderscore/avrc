@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Codice.Client.BaseCommands.Differences;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -34,10 +33,10 @@ namespace net.fushizen.avrc
             Names = new AvrcNames(binding);
             Parameters = binding.parameters;
             Timeout = Mathf.Max(1.0f, binding.timeoutSeconds);
-            
+
             Animations = new AvrcAnimations(Parameters, Names);
             Objects = new AvrcObjects(Parameters, Names);
-            
+
             foreach (var c in avatarDescriptor.baseAnimationLayers)
             {
                 if (c.type == VRCAvatarDescriptor.AnimLayerType.FX)
@@ -84,14 +83,10 @@ namespace net.fushizen.avrc
             switch (parameter.type)
             {
                 case AvrcParameters.AvrcParameterType.Bool:
-                case AvrcParameters.AvrcParameterType.IsLocal:
                     AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
                     break;
                 case AvrcParameters.AvrcParameterType.Int:
                     AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
-                    break;
-                case AvrcParameters.AvrcParameterType.Float:
-                    AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Float);
                     break;
             }
 
@@ -170,12 +165,7 @@ namespace net.fushizen.avrc
 
                     break;
                 }
-                case AvrcParameters.AvrcParameterType.Float:
-                    animatorStateMachine = FloatParamLayer(parameter);
-                    break;
-                case AvrcParameters.AvrcParameterType.IsLocal:
-                    animatorStateMachine = IsLocalParamLayer(parameter);
-                    break;
+
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -272,9 +262,6 @@ namespace net.fushizen.avrc
             NotEqualsCondition notEqualsCondition,
             DriveParameter driveParameter
         );
-
-        protected abstract AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter);
-        protected abstract AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter);
 
         protected VRCAvatarParameterDriver ParameterDriver(bool localOnly = true)
         {
@@ -388,7 +375,7 @@ namespace net.fushizen.avrc
             AddParameter(recvPeerLocal, AnimatorControllerParameterType.Float);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
-            
+
             peerLocal.behaviours = new StateMachineBehaviour[]
             {
                 ParameterDriver(localOnly: false,
@@ -406,7 +393,7 @@ namespace net.fushizen.avrc
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerPresent);
             t.AddCondition(AnimatorConditionMode.Less, 0.5f, recvPeerLocal);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
-            
+
             peerPresent.behaviours = new StateMachineBehaviour[]
             {
                 ParameterDriver(localOnly: false,
@@ -418,7 +405,7 @@ namespace net.fushizen.avrc
 
             t = AddInstantTransition(peerPresent, peerLocal);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
-            
+
             CreateTimeoutStates(rootStateMachine, peerPresent, init, recvPeerPresent);
 
             return rootStateMachine;

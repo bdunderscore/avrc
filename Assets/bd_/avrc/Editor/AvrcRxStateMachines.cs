@@ -19,13 +19,14 @@ namespace net.fushizen.avrc
         {
             new AvrcRxStateMachines(avatarDescriptor, binding).Setup();
         }
-        
-        private void Setup() {
+
+        private void Setup()
+        {
             // Enable the constraint that places our receiver triggers at the correct location
             AddOrReplaceLayer(Names.LayerSetup, ReceiverSetupLayer());
             // Set up a mesh to expand our bounding box locally for the transmitter
             // AddOrReplaceLayer("_AVRC_" + Names.Prefix + "_RXBounds", BoundsSetupStateMachine());
-            
+
             foreach (var param in Parameters.avrcParams)
             {
                 CreateParameterLayer(param);
@@ -42,52 +43,11 @@ namespace net.fushizen.avrc
                 Names.ParamTxLocal,
                 Names.ParamTxProximity,
                 Animations.ReceiverPresentClip
-                );
+            );
         }
 
-        protected override AnimatorStateMachine IsLocalParamLayer(AvrcParameters.AvrcParameter parameter)
-        {
-            var stateMachine = new AnimatorStateMachine();
-
-            var init = stateMachine.AddState("Init");
-            AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
-            init.behaviours = new StateMachineBehaviour[]
-            {
-                ParameterDriver(Names.UserParameter(parameter), 0, false)
-            };
-            init.motion = AvrcAssets.EmptyClip();
-
-            var local = stateMachine.AddState("IsLocal");
-            local.motion = init.motion;
-            local.behaviours = new StateMachineBehaviour[]
-            {
-                ParameterDriver(Names.UserParameter(parameter), 1, false)
-            };
-
-            var timeout = stateMachine.AddState("Timeout");
-            timeout.motion = init.motion;
-
-            var t = AddInstantTransition(init, local);
-            AddParameter(Names.ParamTxLocal, AnimatorControllerParameterType.Float);
-            AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.ParamTxLocal);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
-
-            t = AddInstantTransition(local, timeout);
-            t.hasExitTime = true;
-            t.exitTime = 0.5f;
-
-            t = AddInstantTransition(timeout, local);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.ParamTxLocal);
-
-            t = AddInstantTransition(timeout, init);
-            t.hasExitTime = true;
-            t.exitTime = Timeout - 0.5f;
-
-            return stateMachine;
-        }
-
-        protected override AnimatorStateMachine TwoWayParamLayer(AvrcParameters.AvrcParameter parameter, int values, EqualsCondition equalsCondition,
+        protected override AnimatorStateMachine TwoWayParamLayer(AvrcParameters.AvrcParameter parameter, int values,
+            EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition, DriveParameter driveParameter)
         {
             return FiniteParamLayer(true, parameter, values, equalsCondition, notEqualsCondition, driveParameter);
@@ -103,14 +63,16 @@ namespace net.fushizen.avrc
         {
             return FiniteParamLayer(false, parameter, values, equalsCondition, notEqualsCondition, driveParameter);
         }
+
         AnimatorStateMachine FiniteParamLayer(
             bool twoWay,
             AvrcParameters.AvrcParameter parameter,
             int values,
             EqualsCondition equalsCondition,
-            NotEqualsCondition notEqualsCondition, 
+            NotEqualsCondition notEqualsCondition,
             DriveParameter driveParameter
-        ) {
+        )
+        {
             var stateMachine = new AnimatorStateMachine();
 
             var states = new AnimatorState[values];
@@ -126,14 +88,14 @@ namespace net.fushizen.avrc
             {
                 var hi = (i + 1.5f) * perState;
                 var lo = (i + 0.5f) * perState;
-                
+
                 states[i] = stateMachine.AddState($"Passive_{parameter.name}_{i}");
                 remoteDriven[i] = stateMachine.AddState($"RemoteDriven_{parameter.name}_{i}");
 
                 var driver = ParameterDriver();
-                remoteDriven[i].behaviours = new StateMachineBehaviour[] { driver };
+                remoteDriven[i].behaviours = new StateMachineBehaviour[] {driver};
                 driveParameter(driver, i);
-                
+
                 states[i].motion = AvrcAssets.EmptyClip();
                 remoteDriven[i].motion = AvrcAssets.EmptyClip();
 
@@ -141,11 +103,12 @@ namespace net.fushizen.avrc
                 {
                     states[i].motion = Animations.Named(
                         $"{Names.Prefix}_{parameter.name}_{i}_ACK",
-                        () => Animations.ConstantClip(Names.ParameterPath(parameter) + "_ACK", Parameters.baseOffset, perState * i)
+                        () => Animations.ConstantClip(Names.ParameterPath(parameter) + "_ACK", Parameters.baseOffset,
+                            perState * i)
                     );
                     remoteDriven[i].motion = states[i].motion;
                 }
-                
+
                 // When driven locally (only) skip the parameter driver
                 // TODO: when one-way drive it back to the correct state
                 // TODO: avoid large any state transitions
@@ -168,12 +131,5 @@ namespace net.fushizen.avrc
 
             return stateMachine;
         }
-
-        protected override AnimatorStateMachine FloatParamLayer(AvrcParameters.AvrcParameter parameter)
-        {
-            // Float parameters are simply received directly; no special logic is required
-            return null;
-        }
-
     }
 }

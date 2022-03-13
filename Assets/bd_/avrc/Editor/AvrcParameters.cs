@@ -7,7 +7,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace net.fushizen.avrc
 {
     [Serializable]
-    [CreateAssetMenu(fileName="AVRCParams", menuName = "bd_/AVRC Parameters", order=51)]
+    [CreateAssetMenu(fileName = "AVRCParams", menuName = "bd_/AVRC Parameters", order = 51)]
     public class AvrcParameters : ScriptableObject
     {
         public List<AvrcParameter> avrcParams;
@@ -18,6 +18,7 @@ namespace net.fushizen.avrc
         /// Reference to an expressions menu asset that will be cloned into this AvrcParameters asset.
         /// </summary>
         public VRCExpressionsMenu sourceExpressionMenu;
+
         /// <summary>
         /// Reference to the expressions menu asset embedded in this AvrcParameters asset.
         /// </summary>
@@ -28,14 +29,12 @@ namespace net.fushizen.avrc
         {
             avrcParams = new List<AvrcParameter>();
         }
-        
+
         [Serializable]
         public enum AvrcParameterType
         {
             Bool,
             Int,
-            Float,
-            IsLocal,
         }
 
         [Serializable]
