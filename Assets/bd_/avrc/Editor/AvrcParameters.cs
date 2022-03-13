@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using JetBrains.Annotations;
 using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
-using Random = UnityEngine.Random;
 
 namespace net.fushizen.avrc
 {

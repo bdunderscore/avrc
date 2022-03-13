@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using PlasticGui.WorkspaceWindow.Items;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-using VRC.SDK3.Avatars.Components;
 using static net.fushizen.avrc.AvrcParameters;
 using Debug = System.Diagnostics.Debug;
 using Random = UnityEngine.Random;

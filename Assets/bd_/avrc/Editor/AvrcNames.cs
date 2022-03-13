@@ -8,14 +8,23 @@ namespace net.fushizen.avrc
 
         internal readonly Dictionary<string, string> ParameterMap;
 
-        internal AvrcNames(AvrcParameters parameters)
+        internal AvrcNames(AvrcBindingConfiguration binding) : this(binding.parameters, binding.role)
+        {
+            foreach (var nameOverride in binding.parameterMappings)
+            {
+                ParameterMap[nameOverride.avrcParameterName] = nameOverride.remappedParameterName;
+            }
+        }
+
+        internal AvrcNames(AvrcParameters parameters,
+            AvrcBindingConfiguration.Role role = AvrcBindingConfiguration.Role.TX)
         {
             this.Prefix = parameters.prefix;
 
             ParameterMap = new Dictionary<string, string>();
             foreach (var p in parameters.avrcParams)
             {
-                ParameterMap.Add(p.name, $"AVRC_{Prefix}_{p.name}");
+                ParameterMap.Add(p.name, role == AvrcBindingConfiguration.Role.TX ? $"AVRC_{Prefix}_{p.name}" : p.name);
             }
         }
 
@@ -24,7 +33,7 @@ namespace net.fushizen.avrc
         internal string LayerSetup => $"{LayerPrefix}_Setup";
         internal string LayerRxConstraint => $"{LayerPrefix}_RXConstraint";
         internal string LayerTxEnable => $"{LayerPrefix}_Base";
-            
+
         internal string ParamRxPresent => $"_AVRCI_{Prefix}_RxPresent";
         internal string ParamTxProximity => $"_AVRCI_{Prefix}_TxProximity";
         internal string ParamTxActive => $"_AVRCI_{Prefix}_TxActive";
@@ -45,7 +54,7 @@ namespace net.fushizen.avrc
         {
             return ParameterMap[parameter.name];
         }
-        
+
         internal string InternalParameter(AvrcParameters.AvrcParameter parameter, string suffix = "")
         {
             return $"_AVRCI_{Prefix}_{parameter.name}$" + suffix;

@@ -1,11 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Crypto.Parameters;
 using UnityEditor;
 using VRC.SDK3.Avatars.ScriptableObjects;
 using UnityEngine;
-using UnityEngine.SocialPlatforms;
 using VRC.SDK3.Avatars.Components;
 
 namespace net.fushizen.avrc

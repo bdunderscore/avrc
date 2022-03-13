@@ -17,19 +17,26 @@ namespace net.fushizen.avrc
         protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
         protected const float MaxPresenceTestValue = AvrcObjects.PresenceTestValue + EPSILON;
 
+        protected readonly VRCAvatarDescriptor Avatar;
         protected readonly AvrcParameters Parameters;
         protected readonly AnimatorController AnimatorController;
+        protected readonly AvrcBindingConfiguration Binding;
         protected readonly AvrcNames Names;
         protected readonly AvrcAnimations Animations;
         protected readonly AvrcObjects Objects;
+        protected readonly float Timeout;
 
-        protected AvrcLayerSetupCommon(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
+        protected AvrcLayerSetupCommon(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
         {
-            Names = names;
-            Animations = new AvrcAnimations(parameters, Names);
-            Objects = new AvrcObjects(parameters, Names);
-
-            this.Parameters = parameters;
+            Avatar = avatarDescriptor;
+            Binding = binding;
+            Names = new AvrcNames(binding);
+            Parameters = binding.parameters;
+            Timeout = Mathf.Max(1.0f, binding.timeoutSeconds);
+            
+            Animations = new AvrcAnimations(Parameters, Names);
+            Objects = new AvrcObjects(Parameters, Names);
+            
             foreach (var c in avatarDescriptor.baseAnimationLayers)
             {
                 if (c.type == VRCAvatarDescriptor.AnimLayerType.FX)
@@ -341,14 +348,14 @@ namespace net.fushizen.avrc
 
             t = AddInstantTransition(peerLocal, peerLocalTimer);
             t.hasExitTime = true;
-            t.exitTime = 10;
+            t.exitTime = 0.5f;
 
             t = AddInstantTransition(peerLocalTimer, peerLocal);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
 
             t = AddInstantTransition(peerLocalTimer, init);
             t.hasExitTime = true;
-            t.exitTime = 10;
+            t.exitTime = Timeout - 0.5f;
 
             return rootStateMachine;
         }

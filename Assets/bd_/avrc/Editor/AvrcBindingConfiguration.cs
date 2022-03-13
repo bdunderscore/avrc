@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -15,9 +16,12 @@ namespace net.fushizen.avrc
         public string avrcParameterName;
         public string remappedParameterName;
     }
-    public class AvrcSavedState : StateMachineBehaviour
+    public class AvrcBindingConfiguration : StateMachineBehaviour
     {
+        public AvrcParameters parameters;
+
         [Serializable]
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
         public enum Role
         {
             Init, TX, RX
@@ -25,9 +29,10 @@ namespace net.fushizen.avrc
         
         public List<ParameterMapping> parameterMappings = new List<ParameterMapping>();
         public Role role = Role.Init;
+        public float timeoutSeconds = 5.0f;
     }
 
-    [CustomEditor(typeof(AvrcSavedState))]
+    [CustomEditor(typeof(AvrcBindingConfiguration))]
     public class AvrcSavedStateEditor : Editor
     {
         public override void OnInspectorGUI()
@@ -38,26 +43,26 @@ namespace net.fushizen.avrc
 
     internal class AvrcStateSaver
     {
-        internal static AvrcSavedState LoadState(AvrcNames names, VRCAvatarDescriptor descriptor)
+        internal static AvrcBindingConfiguration LoadState(AvrcNames names, VRCAvatarDescriptor descriptor)
         {
             var savedState = LoadStateWithoutCloning(names, descriptor);
 
             if (savedState == null)
             {
-                return ScriptableObject.CreateInstance<AvrcSavedState>();
+                return ScriptableObject.CreateInstance<AvrcBindingConfiguration>();
             }
 
             // Clone behavior to avoid modifying the original when we don't commit
             return Object.Instantiate(savedState);
         }
 
-        private static AvrcSavedState LoadStateWithoutCloning(AvrcNames names, VRCAvatarDescriptor descriptor)
+        private static AvrcBindingConfiguration LoadStateWithoutCloning(AvrcNames names, VRCAvatarDescriptor descriptor)
         {
             var entryState = FindStateForStorage(names, descriptor);
 
             if (entryState == null) return null;
 
-            return entryState.behaviours.OfType<AvrcSavedState>().FirstOrDefault();
+            return entryState.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
         }
 
         private static AnimatorState FindStateForStorage(AvrcNames names, VRCAvatarDescriptor descriptor)
@@ -72,13 +77,13 @@ namespace net.fushizen.avrc
             return entryState;
         }
 
-        internal static void SaveState(AvrcNames names, VRCAvatarDescriptor descriptor, AvrcSavedState state)
+        internal static void SaveState(AvrcNames names, VRCAvatarDescriptor descriptor, AvrcBindingConfiguration state)
         {
             var entryState = FindStateForStorage(names, descriptor);
             if (entryState == null) throw new Exception("Couldn't find entry state in setup layer");
 
 
-            var existingState = entryState.behaviours.OfType<AvrcSavedState>().FirstOrDefault();
+            var existingState = entryState.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
             if (existingState == null)
             {
                 existingState = Object.Instantiate(state);

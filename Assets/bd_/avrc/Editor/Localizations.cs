@@ -1,7 +1,5 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using Codice.Client.Common.Connection;
 using UnityEditor;
 using UnityEngine;
 

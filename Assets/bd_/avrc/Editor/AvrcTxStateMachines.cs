@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using Codice.Client.Commands.Tree;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -18,17 +16,14 @@ namespace net.fushizen.avrc
     [SuppressMessage("ReSharper", "HeapView.ObjectAllocation.Evident")]
     internal class AvrcTxStateMachines : AvrcLayerSetupCommon
     {
-        private readonly VRCAvatarDescriptor m_avatarDescriptor;
-
-        private AvrcTxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
-            : base(avatarDescriptor, parameters, names)
+        private AvrcTxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
+            : base(avatarDescriptor, binding)
         {
-            m_avatarDescriptor = avatarDescriptor;
         }
 
-        public static void SetupTx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
+        public static void SetupTx(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
         {
-            new AvrcTxStateMachines(avatarDescriptor, parameters, names).Setup();
+            new AvrcTxStateMachines(avatarDescriptor, binding).Setup();
         }
 
         private void Setup()
@@ -58,20 +53,20 @@ namespace net.fushizen.avrc
         private void AddBidirectionalTransferParameters()
         {
             HashSet<string> knownParameters = new HashSet<string>();
-            if (m_avatarDescriptor.expressionParameters == null)
+            if (Avatar.expressionParameters == null)
             {
                 throw new Exception("No expression parameters found");
             }
 
-            foreach (var param in m_avatarDescriptor.expressionParameters.parameters)
+            foreach (var param in Avatar.expressionParameters.parameters)
             {
                 knownParameters.Add(param.name);
             }
 
             int remaining = VRCExpressionParameters.MAX_PARAMETER_COST -
-                            m_avatarDescriptor.expressionParameters.CalcTotalCost();
+                            Avatar.expressionParameters.CalcTotalCost();
             List<VRCExpressionParameters.Parameter> parameters
-                = new List<VRCExpressionParameters.Parameter>(m_avatarDescriptor.expressionParameters.parameters);
+                = new List<VRCExpressionParameters.Parameter>(Avatar.expressionParameters.parameters);
 
             foreach (var param in Parameters.avrcParams)
             {
@@ -90,7 +85,7 @@ namespace net.fushizen.avrc
                 });
             }
 
-            m_avatarDescriptor.expressionParameters.parameters = parameters.ToArray();
+            Avatar.expressionParameters.parameters = parameters.ToArray();
         }
 
         private AnimatorStateMachine TransmitterEnableStateMachine()
@@ -288,7 +283,7 @@ namespace net.fushizen.avrc
                 // Write TX variable on entering passive state
                 var driver = ParameterDriver(parameter.TxParameterFlag(Names), 0);
                 driveParameter(driver, i);
-                passiveStates[i].behaviours = new[] {driver};
+                passiveStates[i].behaviours = new StateMachineBehaviour[] {driver};
 
                 // Entry into passive state from rx
                 var transition = AddInstantTransition(rx, passiveStates[i]);

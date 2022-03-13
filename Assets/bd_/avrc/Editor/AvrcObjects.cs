@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using VRC.Dynamics;
-using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace net.fushizen.avrc

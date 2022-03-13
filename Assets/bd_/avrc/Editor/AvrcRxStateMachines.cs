@@ -1,11 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Math.Field;
+﻿using System.Diagnostics.CodeAnalysis;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
-using VRC.SDKBase;
 
 namespace net.fushizen.avrc
 {
@@ -13,14 +10,14 @@ namespace net.fushizen.avrc
     [SuppressMessage("ReSharper", "HeapView.BoxingAllocation")]
     internal class AvrcRxStateMachines : AvrcLayerSetupCommon
     {
-        private AvrcRxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
-            : base(avatarDescriptor, parameters, names)
+        private AvrcRxStateMachines(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
+            : base(avatarDescriptor, binding)
         {
         }
 
-        public static void SetupRx(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters, AvrcNames names)
+        public static void SetupRx(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
         {
-            new AvrcRxStateMachines(avatarDescriptor, parameters, names).Setup();
+            new AvrcRxStateMachines(avatarDescriptor, binding).Setup();
         }
         
         private void Setup() {
@@ -72,15 +69,15 @@ namespace net.fushizen.avrc
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
 
             t = AddInstantTransition(local, timeout);
-            t.exitTime = 2;
             t.hasExitTime = true;
+            t.exitTime = 0.5f;
 
             t = AddInstantTransition(timeout, local);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.ParamTxLocal);
 
             t = AddInstantTransition(timeout, init);
-            t.exitTime = 2;
             t.hasExitTime = true;
+            t.exitTime = Timeout - 0.5f;
 
             return stateMachine;
         }
