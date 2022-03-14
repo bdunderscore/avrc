@@ -57,7 +57,9 @@ namespace net.fushizen.avrc
 
             if (roleProp.enumValueIndex != (int) AvrcBindingConfiguration.Role.RX)
             {
-                using (new EditorGUI.DisabledGroupScope(_params == null || _params.embeddedExpressionsMenu == null))
+                using (new EditorGUI.DisabledGroupScope(_params == null ||
+                                                        _params.embeddedExpressionsMenu == null &&
+                                                        _params.sourceExpressionMenu == null))
                 {
                     _installMenu = EditorGUILayout.ObjectField(
                         L.INST_MENU, _installMenu, typeof(VRCExpressionsMenu), allowSceneObjects: false
@@ -270,8 +272,9 @@ namespace net.fushizen.avrc
             );
 
             menuRef.menu = rootTargetMenu;
-            cloner.SyncMenus(_params.embeddedExpressionsMenu);
-
+            cloner.SyncMenus(_params.sourceExpressionMenu != null
+                ? _params.sourceExpressionMenu
+                : _params.embeddedExpressionsMenu);
 
             if (_installMenu.controls.All(c => c.subMenu != rootTargetMenu))
             {
@@ -365,11 +368,16 @@ namespace net.fushizen.avrc
             _bindingConfigSO = new SerializedObject(_bindingConfig);
 
             _remapProp = _bindingConfigSO.FindProperty(nameof(AvrcBindingConfiguration.parameterMappings));
+
             _remapList = new ReorderableList(_bindingConfigSO, _remapProp, false, false, false, false)
             {
                 headerHeight = 0,
                 drawElementCallback = OnDrawListElement,
-                elementHeight = 4 + EditorGUIUtility.singleLineHeight
+                elementHeightCallback = elem =>
+                {
+                    var lines = _bindingConfig.role == AvrcBindingConfiguration.Role.RX ? 2 : 1;
+                    return (4 + EditorGUIUtility.singleLineHeight + 4) * lines - 4;
+                }
             };
         }
 
@@ -384,6 +392,9 @@ namespace net.fushizen.avrc
 
         private void OnDrawListElement(Rect rect, int index, bool isActive, bool isFocused)
         {
+            var initial = rect;
+            rect.height = EditorGUIUtility.singleLineHeight;
+
             Rect labelRect = new Rect()
             {
                 width = labelWidth + 10,
@@ -396,8 +407,8 @@ namespace net.fushizen.avrc
             rect.x += labelRect.width;
             rect.width -= labelRect.width;
 
-            var prop = _remapProp.GetArrayElementAtIndex(index)
-                .FindPropertyRelative(nameof(ParameterMapping.remappedParameterName));
+            var element = _remapProp.GetArrayElementAtIndex(index);
+            var prop = element.FindPropertyRelative(nameof(ParameterMapping.remappedParameterName));
             EditorGUI.PropertyField(rect, prop, GUIContent.none);
 
             if (prop.stringValue.Equals(""))
@@ -412,6 +423,42 @@ namespace net.fushizen.avrc
                     DefaultNameMapping(_bindingConfig.parameterMappings[index]),
                     labelStyle
                 );
+            }
+
+            if (_bindingConfigSO.FindProperty(nameof(_bindingConfig.role)).enumValueIndex ==
+                (int) AvrcBindingConfiguration.Role.RX)
+            {
+                rect = initial;
+                rect.y += EditorGUIUtility.singleLineHeight + 4;
+                rect.height -= EditorGUIUtility.singleLineHeight + 4 + 4;
+                rect.x += labelRect.width;
+                rect.width -= labelRect.width;
+
+                var noSignalModeProp = element.FindPropertyRelative(nameof(ParameterMapping.noSignalMode));
+                EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 80, padAfter: 10), noSignalModeProp,
+                    GUIContent.none);
+
+                switch ((NoSignalMode) noSignalModeProp.enumValueIndex)
+                {
+                    case NoSignalMode.Hold:
+                        break;
+                    case NoSignalMode.Reset:
+                    {
+                        var defaultValProp = element.FindPropertyRelative(nameof(ParameterMapping.defaultValue));
+                        // TODO: Check property type
+                        defaultValProp.intValue = EditorGUI.IntField(AvrcUI.AdvanceRect(ref rect, 40), GUIContent.none,
+                            defaultValProp.intValue);
+                        break;
+                    }
+                    case NoSignalMode.Forward:
+                    {
+                        var forwardProp = element.FindPropertyRelative(nameof(ParameterMapping.forwardParameter));
+                        // TODO: Select from known properties
+                        forwardProp.stringValue = EditorGUI.TextField(AvrcUI.AdvanceRect(ref rect, 120, padAfter: 10),
+                            GUIContent.none, forwardProp.stringValue);
+                        break;
+                    }
+                }
             }
         }
 

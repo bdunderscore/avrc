@@ -450,6 +450,11 @@ namespace net.fushizen.avrc
             transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
         }
 
+        protected Vector3 pos(float x, float y)
+        {
+            return new Vector3((x + 1) * 400, y * -80, 0);
+        }
+
         protected delegate void EqualsCondition(AnimatorStateTransition transition, int index);
 
         protected delegate void NotEqualsCondition(AnimatorStateTransition transition, int index);

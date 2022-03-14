@@ -15,6 +15,28 @@ namespace net.fushizen.avrc
     {
         public string avrcParameterName;
         public string remappedParameterName;
+        public string forwardParameter;
+        public int defaultValue;
+        public NoSignalMode noSignalMode;
+    }
+
+    [Serializable]
+    public enum NoSignalMode
+    {
+        /// <summary>
+        ///     Maintain the current value when no signal is received
+        /// </summary>
+        Hold,
+
+        /// <summary>
+        ///     Reset to a fixed value when no signal is received
+        /// </summary>
+        Reset,
+
+        /// <summary>
+        ///     Forward a different parameter when no signal is received
+        /// </summary>
+        Forward
     }
 
     public class AvrcBindingConfiguration : StateMachineBehaviour
@@ -100,6 +122,7 @@ namespace net.fushizen.avrc
 
             EditorUtility.CopySerialized(state, existingState);
             existingState.hideFlags = HideFlags.HideInInspector;
+            existingState.name = $"AVRC Binding Config for ${existingState.parameters.prefix}";
             EditorUtility.SetDirty(existingState);
         }
     }
