@@ -78,13 +78,15 @@ namespace net.fushizen.avrc
             var stateMachine = new AnimatorStateMachine();
 
             var localDriven = new AnimatorState[values];
+            var remoteDriven = new AnimatorState[localDriven.Length];
+
+            var localDrivenUnstable = new AnimatorState[values];
+
             var perState = 1.0f / (localDriven.Length + 1);
 
             var conditionParamName = Names.InternalParameter(parameter);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
             AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
-
-            var remoteDriven = new AnimatorState[localDriven.Length];
 
             var startup = stateMachine.AddState("Startup", pos(0, 0));
 
@@ -123,6 +125,8 @@ namespace net.fushizen.avrc
 
                 localDriven[i] = stateMachine.AddState($"LocalDriven_{parameter.name}_{i}",
                     pos(1, i - localDriven.Length / 2.0f));
+                localDrivenUnstable[i] = stateMachine.AddState($"LocalUnstable_{parameter.name}_{i}",
+                    pos(1.25f, i - localDriven.Length / 2.0f + 0.25f));
                 remoteDriven[i] = stateMachine.AddState($"RemoteDriven_{parameter.name}_{i}",
                     pos(3, i + 0.5f - localDriven.Length / 2.0f));
 
@@ -131,7 +135,6 @@ namespace net.fushizen.avrc
                 driveParameter(driver, i);
 
                 localDriven[i].motion = AvrcAssets.EmptyClip();
-                remoteDriven[i].motion = AvrcAssets.EmptyClip();
 
                 if (twoWay)
                 {
@@ -140,8 +143,10 @@ namespace net.fushizen.avrc
                         () => Animations.ConstantClip(Names.ParameterPath(parameter) + "_ACK", Parameters.baseOffset,
                             perState * i)
                     );
-                    remoteDriven[i].motion = localDriven[i].motion;
                 }
+
+                remoteDriven[i].motion = localDriven[i].motion;
+                localDrivenUnstable[i].motion = localDriven[i].motion;
 
                 // TODO: Set hysteresis hold?
 
@@ -155,14 +160,28 @@ namespace net.fushizen.avrc
                 notEqualsCondition(transition, i);
 
                 // Transition to receive when remote side drives a new value.
-                transition = AddInstantTransition(localDriven[i], drivenByTx);
+                transition = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
                 transition.AddCondition(AnimatorConditionMode.Less, lo, conditionParamName);
                 transition.AddCondition(AnimatorConditionMode.Greater, 0, conditionParamName);
                 AddPresenceCondition(transition, Names.ParamTxProximity);
 
-                transition = AddInstantTransition(localDriven[i], drivenByTx);
+                transition = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
                 transition.AddCondition(AnimatorConditionMode.Greater, hi, conditionParamName);
                 AddPresenceCondition(transition, Names.ParamTxProximity);
+
+                // Wait a moment before we commit. This helps avoid spurious transitions when one side is moving.
+                transition = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
+                transition.AddCondition(AnimatorConditionMode.Less, lo, conditionParamName);
+                transition.AddCondition(AnimatorConditionMode.Greater, 0, conditionParamName);
+                AddPresenceCondition(transition, Names.ParamTxProximity);
+
+                transition = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
+                transition.AddCondition(AnimatorConditionMode.Greater, hi, conditionParamName);
+                AddPresenceCondition(transition, Names.ParamTxProximity);
+
+                AddNoPresenceTransitions(Names.ParamTxProximity,
+                    () => AddInstantTransition(localDrivenUnstable[i], localDriven[i])
+                );
 
                 // Transition back from TX driven state after receive
                 transition = AddInstantTransition(drivenByTx, remoteDriven[i]);

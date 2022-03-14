@@ -11,7 +11,7 @@ namespace net.fushizen.avrc
 {
     internal abstract class AvrcLayerSetupCommon
     {
-        protected const float EPSILON = 0.01f;
+        protected const float EPSILON = 0.001f;
 
         //protected const float PROXIMITY_EPSILON = 1 - EPSILON;
         protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
@@ -57,6 +57,12 @@ namespace net.fushizen.avrc
             AddParameter(varName, AnimatorControllerParameterType.Float);
             t.AddCondition(AnimatorConditionMode.Less, MaxPresenceTestValue, varName);
             t.AddCondition(AnimatorConditionMode.Greater, MinPresenceTestValue, varName);
+        }
+
+        protected void AddNoPresenceTransitions(string varName, TransitionProvider provider)
+        {
+            provider().AddCondition(AnimatorConditionMode.Greater, MaxPresenceTestValue, varName);
+            provider().AddCondition(AnimatorConditionMode.Less, MaxPresenceTestValue, varName);
         }
 
         protected void AddParameter(string name, AnimatorControllerParameterType ty)
@@ -454,6 +460,8 @@ namespace net.fushizen.avrc
         {
             return new Vector3((x + 1) * 400, y * -80, 0);
         }
+
+        protected delegate AnimatorStateTransition TransitionProvider();
 
         protected delegate void EqualsCondition(AnimatorStateTransition transition, int index);
 

@@ -49,10 +49,17 @@ namespace net.fushizen.avrc
 
             if (target.baseOffset.sqrMagnitude < 1)
             {
+                // We primarily rely on the contact tags to avoid interference, but we also set a position offset both
+                // to avoid too many debug displays at the origin, and to reduce the number of collision tag tests that
+                // need to occur by allowing the contact/collision broadphase to separately cluster contacts for
+                // different AVRC channels.
+                //
+                // We do want to avoid making this too large, as it'll increase the effect of rotation on instantaneous
+                // position offset and thus risk falsely detecting a loss of communication.
                 target.baseOffset = new Vector3(
-                    Random.Range(10000, 20000),
-                    Random.Range(10000, 20000),
-                    0
+                    Random.Range(-100, 100),
+                    Random.Range(-100, 100),
+                    Random.Range(-100, 100)
                 );
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssets();

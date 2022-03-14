@@ -40,8 +40,8 @@ namespace net.fushizen.avrc
                 AnimationCurve.Constant(0, 1, 0));
             clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
                 AnimationCurve.Linear(
-                    0, AvrcObjects.RadiusScale * (baseOffset.z + 1),
-                    1, AvrcObjects.RadiusScale * (baseOffset.z + 0.5f)
+                    0, AvrcObjects.RadiusScale * 1,
+                    1, AvrcObjects.RadiusScale * 0.5f
                 ));
 
             return clip;
@@ -56,7 +56,7 @@ namespace net.fushizen.avrc
                 AnimationCurve.Constant(0, 1, 0));
             clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
                 AnimationCurve.Constant(0, 1,
-                    AvrcObjects.RadiusScale * (baseOffset.z + Mathf.LerpUnclamped(1, 0.5f, value))));
+                    AvrcObjects.RadiusScale * Mathf.LerpUnclamped(1, 0.5f, value)));
 
             return clip;
         }
