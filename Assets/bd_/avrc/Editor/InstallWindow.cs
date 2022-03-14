@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
+using UnityEngine.Animations;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -185,6 +186,18 @@ namespace net.fushizen.avrc
                     name = "AVRC"
                 };
                 Undo.RegisterCreatedObjectUndo(root, "AVRC setup");
+            }
+
+            if (root.GetComponent<ScaleConstraint>() == null)
+            {
+                var constraint = Undo.AddComponent<ScaleConstraint>(root);
+                constraint.AddSource(new ConstraintSource
+                {
+                    weight = 1,
+                    sourceTransform = AvrcAssets.Origin().transform
+                });
+                constraint.locked = true;
+                constraint.constraintActive = true;
             }
 
             return root;
