@@ -21,6 +21,7 @@ namespace net.fushizen.avrc
         private VRCExpressionsMenu _installMenu;
         private AvrcParameters _params;
         private VRCAvatarDescriptor _targetAvatar;
+        private Vector2 scrollPos = Vector2.zero;
 
         private bool showDetails = false;
 
@@ -33,6 +34,7 @@ namespace net.fushizen.avrc
 
         private void OnGUI()
         {
+            scrollPos = GUILayout.BeginScrollView(scrollPos);
             Localizations.SwitchLanguageButton();
 
             EditorGUI.BeginChangeCheck();
@@ -120,6 +122,8 @@ namespace net.fushizen.avrc
                     AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, null);
                 }
             }
+
+            GUILayout.EndScrollView();
         }
 
         [SuppressMessage("ReSharper", "UnusedMember.Global")]
