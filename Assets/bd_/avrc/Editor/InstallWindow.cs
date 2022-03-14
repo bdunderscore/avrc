@@ -207,6 +207,8 @@ namespace net.fushizen.avrc
         {
             bool ok = true;
 
+            if (_bindingConfigSO == null || _bindingConfigSO.targetObject == null) InitSavedState();
+
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
 
             ok = ok && Precheck("Role is not set", _bindingConfig.role != AvrcBindingConfiguration.Role.Init);

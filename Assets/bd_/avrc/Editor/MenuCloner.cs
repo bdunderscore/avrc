@@ -171,7 +171,6 @@ namespace net.fushizen.avrc
                 }
                 else
                 {
-                    Debug.Log(iter.propertyPath);
                     var changed = target.CopyFromSerializedPropertyIfDifferent(iter);
 
                     if (changed)

@@ -6,12 +6,14 @@ using UnityEngine;
 using UnityEngine.Animations;
 using VRC.Dynamics;
 using VRC.SDK3.Dynamics.Contact.Components;
+using Object = UnityEngine.Object;
 
 namespace net.fushizen.avrc
 {
     internal class AvrcObjects
     {
-        internal const float RadiusScale = 1f;
+        // Just under 5m - the maximum size for contacts to work reliably
+        internal const float RadiusScale = 4.5f;
 
         internal const float PresenceTestValue = 0.66f;
 
@@ -70,7 +72,7 @@ namespace net.fushizen.avrc
                 GameObject boundsCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 Undo.RegisterCreatedObjectUndo(boundsCube, "AVRC setup");
 
-                UnityEngine.Object.DestroyImmediate(boundsCube.GetComponent<BoxCollider>());
+                Object.DestroyImmediate(boundsCube.GetComponent<BoxCollider>());
                 var renderer = boundsCube.GetComponent<MeshRenderer>();
                 renderer.sharedMaterials = Array.Empty<Material>();
 
@@ -153,14 +155,14 @@ namespace net.fushizen.avrc
             var rxPresent = createTrigger<VRCContactReceiver>(obj, "$TXPresent");
             var rxTrigger = rxPresent.GetComponent<VRCContactReceiver>();
             rxTrigger.allowSelf = false;
-            rxTrigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
+            rxTrigger.receiverType = ContactReceiver.ReceiverType.Proximity;
             rxTrigger.parameter = _names.ParamTxProximity;
 
             var txLocal = createTrigger<VRCContactReceiver>(obj, "$TXLocal");
             var localTrigger = txLocal.GetComponent<VRCContactReceiver>();
             txLocal.transform.localPosition = -(Vector3.forward * rxTrigger.radius);
             localTrigger.allowSelf = false;
-            localTrigger.receiverType = VRCContactReceiver.ReceiverType.Constant;
+            localTrigger.receiverType = ContactReceiver.ReceiverType.Constant;
             localTrigger.parameter = _names.ParamTxLocal;
             localTrigger.collisionTags = new List<string>(rxTrigger.collisionTags);
 
@@ -182,7 +184,7 @@ namespace net.fushizen.avrc
             var rxPresent = createTrigger<VRCContactReceiver>(obj, "$RXPresent");
             var trigger = rxPresent.GetComponent<VRCContactReceiver>();
             trigger.allowSelf = false;
-            trigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
+            trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
             trigger.parameter = _names.ParamRxPresent;
             var rxPresentMask = trigger.collisionTags;
 
@@ -192,7 +194,7 @@ namespace net.fushizen.avrc
             trigger = rxLocal.GetComponent<VRCContactReceiver>();
             rxLocal.transform.localPosition = -(Vector3.forward * trigger.radius);
             trigger.allowSelf = false;
-            trigger.receiverType = VRCContactReceiver.ReceiverType.Constant;
+            trigger.receiverType = ContactReceiver.ReceiverType.Constant;
             trigger.parameter = _names.ParamRxLocal;
             trigger.collisionTags = new List<string>(rxPresentMask);
 
@@ -211,7 +213,7 @@ namespace net.fushizen.avrc
                     trigger = triggerObj.GetComponent<VRCContactReceiver>();
                     trigger.allowSelf = false;
                     trigger.parameter = _names.InternalParameter(param, "ACK");
-                    trigger.receiverType = VRCContactReceiver.ReceiverType.Proximity;
+                    trigger.receiverType = ContactReceiver.ReceiverType.Proximity;
                     trigger.position = new Vector3(0, 0, 0);
                 }
             }
