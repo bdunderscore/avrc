@@ -12,7 +12,8 @@ namespace net.fushizen.avrc
         {
             foreach (var nameOverride in binding.parameterMappings)
             {
-                ParameterMap[nameOverride.avrcParameterName] = nameOverride.remappedParameterName;
+                if (!string.IsNullOrWhiteSpace(nameOverride.remappedParameterName))
+                    ParameterMap[nameOverride.avrcParameterName] = nameOverride.remappedParameterName;
             }
         }
 

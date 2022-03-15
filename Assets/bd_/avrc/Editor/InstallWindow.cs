@@ -150,7 +150,8 @@ namespace net.fushizen.avrc
 
             var root = CreateRoot(_targetAvatar.gameObject);
 
-            var names = ApplyNameOverrides();
+            _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
+            var names = new AvrcNames(_bindingConfig);
             var objects = new AvrcObjects(avrcParameters, names);
 
             _bindingConfig.role = _bindingConfig.role;
@@ -302,8 +303,9 @@ namespace net.fushizen.avrc
         private SerializedProperty _remapProp;
         private string duplicateName = null;
 
-        AvrcNames ApplyNameOverrides()
+        private AvrcNames SyncNames()
         {
+            _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
             duplicateName = null;
             if (_params == null)
             {
@@ -311,45 +313,51 @@ namespace net.fushizen.avrc
                 return null;
             }
 
+            var madeChanges = false;
+
             _cachedNames = new AvrcNames(_params);
-            HashSet<string> mappedParams = new HashSet<string>();
-            HashSet<string> knownParams = new HashSet<string>();
+            var boundParams = new HashSet<string>();
+            var specParams = new HashSet<string>();
             foreach (var specParam in _params.avrcParams)
             {
-                knownParams.Add(specParam.name);
+                specParams.Add(specParam.name);
             }
 
-            var mappings = _bindingConfig.parameterMappings
-                .Where(p => knownParams.Contains(p.avrcParameterName)).ToArray();
-            foreach (var alreadyMapped in mappings)
+            var initialParamCount = _bindingConfig.parameterMappings.Count;
+            _bindingConfig.parameterMappings = _bindingConfig.parameterMappings
+                .Where(p => specParams.Contains(p.avrcParameterName)).ToList();
+            if (initialParamCount != _bindingConfig.parameterMappings.Count) madeChanges = true;
+            foreach (var alreadyMapped in _bindingConfig.parameterMappings)
             {
-                knownParams.Remove(alreadyMapped.avrcParameterName);
+                specParams.Remove(alreadyMapped.avrcParameterName);
 
                 var mappedName = DefaultNameMapping(alreadyMapped);
                 if (!String.IsNullOrWhiteSpace(alreadyMapped.remappedParameterName))
                 {
-                    _cachedNames.ParameterMap[alreadyMapped.avrcParameterName] = alreadyMapped.remappedParameterName;
                     mappedName = alreadyMapped.remappedParameterName;
                 }
 
-                if (!mappedParams.Add(mappedName))
+                if (!boundParams.Add(mappedName))
                 {
                     duplicateName = mappedName;
                 }
             }
 
-            foreach (var newParam in knownParams)
+            foreach (var newParam in specParams)
             {
                 _bindingConfig.parameterMappings.Add(new ParameterMapping()
                 {
                     avrcParameterName = newParam,
                     remappedParameterName = ""
                 });
+                madeChanges = true;
             }
 
             _bindingConfig.parameterMappings.Sort(
                 (a, b) => String.Compare(a.avrcParameterName, b.avrcParameterName, StringComparison.CurrentCulture)
             );
+
+            if (madeChanges) InitBindingList();
 
             return _cachedNames;
         }
@@ -368,7 +376,12 @@ namespace net.fushizen.avrc
 
             _cachedNames = new AvrcNames(_params);
             _bindingConfig = AvrcStateSaver.LoadState(_cachedNames, _targetAvatar);
-            ApplyNameOverrides();
+
+            InitBindingList();
+        }
+
+        private void InitBindingList()
+        {
             _bindingConfigSO = new SerializedObject(_bindingConfig);
 
             _remapProp = _bindingConfigSO.FindProperty(nameof(AvrcBindingConfiguration.parameterMappings));
@@ -471,22 +484,7 @@ namespace net.fushizen.avrc
             if (_remapList == null) return;
 
             // Verify that the remap list is up to date
-            if (_bindingConfig.parameterMappings.Count != _params.avrcParams.Count)
-            {
-                InitSavedState();
-            }
-            else
-            {
-                // O(n^2) but we'll probably only have a handful of entries... probably...
-                foreach (var param in _params.avrcParams)
-                {
-                    if (_bindingConfig.parameterMappings.All(e => e.avrcParameterName != param.name))
-                    {
-                        InitSavedState();
-                        break;
-                    }
-                }
-            }
+            SyncNames();
 
             EditorGUILayout.Separator();
             EditorGUILayout.LabelField("Remap parameter names");
@@ -513,7 +511,7 @@ namespace net.fushizen.avrc
             if (EditorGUI.EndChangeCheck())
             {
                 _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
-                ApplyNameOverrides();
+                SyncNames();
             }
         }
 
