@@ -13,9 +13,6 @@ namespace net.fushizen.avrc
     {
         protected const float EPSILON = 0.001f;
 
-        //protected const float PROXIMITY_EPSILON = 1 - EPSILON;
-        protected const float MinPresenceTestValue = AvrcObjects.PresenceTestValue - EPSILON;
-        protected const float MaxPresenceTestValue = AvrcObjects.PresenceTestValue + EPSILON;
         protected readonly AvrcAnimations Animations;
         protected readonly AnimatorController AnimatorController;
 
@@ -35,7 +32,7 @@ namespace net.fushizen.avrc
             Timeout = Mathf.Max(1.0f, binding.timeoutSeconds);
 
             Animations = new AvrcAnimations(Parameters, Names);
-            Objects = new AvrcObjects(Parameters, Names);
+            Objects = new AvrcObjects(Parameters, Names, Binding.role);
 
             foreach (var c in avatarDescriptor.baseAnimationLayers)
             {
@@ -52,17 +49,37 @@ namespace net.fushizen.avrc
             }
         }
 
-        protected void AddPresenceCondition(AnimatorStateTransition t, string varName)
+        protected void AddPilotCondition(AnimatorStateTransition t, bool present = true)
         {
-            AddParameter(varName, AnimatorControllerParameterType.Float);
-            t.AddCondition(AnimatorConditionMode.Less, MaxPresenceTestValue, varName);
-            t.AddCondition(AnimatorConditionMode.Greater, MinPresenceTestValue, varName);
+            foreach (var pilot in Names.SignalPilots(Binding.role.Other()))
+            {
+                AddParameter(pilot, AnimatorControllerParameterType.Float);
+                t.AddCondition(present ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less, 0.5f, pilot);
+            }
         }
 
-        protected void AddNoPresenceTransitions(string varName, TransitionProvider provider)
+        protected void AddSignalCondition(AnimatorStateTransition t, AvrcParameters.AvrcParameter parameter, int index,
+            bool ack)
         {
-            provider().AddCondition(AnimatorConditionMode.Greater, MaxPresenceTestValue, varName);
-            provider().AddCondition(AnimatorConditionMode.Less, MaxPresenceTestValue, varName);
+            foreach (var bit in Names.SignalParam(parameter, ack))
+            {
+                var mode = (index & 1) == 1 ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less;
+                AddParameter(bit, AnimatorControllerParameterType.Float);
+                t.AddCondition(mode, 0.5f, bit);
+                index >>= 1;
+            }
+        }
+
+        protected void AddAntiSignalConditions(AvrcParameters.AvrcParameter parameter, int index, bool ack,
+            TransitionProvider transitionProvider)
+        {
+            foreach (var bit in Names.SignalParam(parameter, ack))
+            {
+                var mode = (index & 1) != 1 ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less;
+                var t = transitionProvider();
+                t.AddCondition(mode, 0.5f, bit);
+                index >>= 1;
+            }
         }
 
         protected void AddParameter(string name, AnimatorControllerParameterType ty)
@@ -308,10 +325,8 @@ namespace net.fushizen.avrc
         /// <param name="clipCreator"></param>
         /// <returns></returns>
         protected AnimatorStateMachine CommonSetupLayer(
-            string animPrefix,
-            string recvPeerLocal,
-            string recvPeerPresent,
-            ClipCreator clipCreator)
+            string animPrefix
+        )
         {
             AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
 
@@ -322,7 +337,7 @@ namespace net.fushizen.avrc
             var init = rootStateMachine.AddState("Init");
             init.motion = Animations.Named(
                 animPrefix + "Init",
-                () => clipCreator(AvrcAnimations.LocalState.Unknown)
+                () => Animations.PresenceClip(AvrcAnimations.LocalState.Unknown, Binding.role)
             );
             init.behaviours = new StateMachineBehaviour[]
             {
@@ -336,7 +351,7 @@ namespace net.fushizen.avrc
             var ownerLocal = rootStateMachine.AddState("OwnerLocal");
             ownerLocal.motion = Animations.Named(
                 animPrefix + "OwnerLocal",
-                () => clipCreator(AvrcAnimations.LocalState.OwnerLocal)
+                () => Animations.PresenceClip(AvrcAnimations.LocalState.OwnerLocal, Binding.role)
             );
             var t = AddInstantTransition(init, ownerLocal);
             AddIsLocalCondition(t);
@@ -360,18 +375,18 @@ namespace net.fushizen.avrc
                 )
             };
             t = AddInstantTransition(ownerLocal, ownerLocalTxPresent);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerPresent);
+            AddPilotCondition(t);
 
-            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal, recvPeerPresent);
+            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal, t_ => AddPilotCondition(t_));
 
             var peerLocal = rootStateMachine.AddState("PeerLocal");
             peerLocal.motion = Animations.Named(
                 animPrefix + "PeerLocal",
-                () => clipCreator(AvrcAnimations.LocalState.PeerLocal)
+                () => Animations.PresenceClip(AvrcAnimations.LocalState.PeerLocal, Binding.role)
             );
             t = AddInstantTransition(init, peerLocal);
-            AddParameter(recvPeerLocal, AnimatorControllerParameterType.Float);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
+            AddParameter(Names.SignalLocal(Binding.role.Other()), AnimatorControllerParameterType.Float);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.SignalLocal(Binding.role.Other()));
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
 
             peerLocal.behaviours = new StateMachineBehaviour[]
@@ -383,13 +398,18 @@ namespace net.fushizen.avrc
                 )
             };
 
-            CreateTimeoutStates(rootStateMachine, peerLocal, init, recvPeerLocal);
+            CreateTimeoutStates(rootStateMachine, peerLocal, init,
+                t_ => t_.AddCondition(
+                    AnimatorConditionMode.Greater,
+                    0.5f,
+                    Names.SignalLocal(Binding.role.Other())
+                ));
 
             var peerPresent = rootStateMachine.AddState("PeerPresent");
             peerPresent.motion = init.motion;
             t = AddInstantTransition(init, peerPresent);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerPresent);
-            t.AddCondition(AnimatorConditionMode.Less, 0.5f, recvPeerLocal);
+            AddPilotCondition(t);
+            t.AddCondition(AnimatorConditionMode.Less, 0.5f, Names.SignalLocal(Binding.role.Other()));
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
 
             peerPresent.behaviours = new StateMachineBehaviour[]
@@ -402,9 +422,9 @@ namespace net.fushizen.avrc
             };
 
             t = AddInstantTransition(peerPresent, peerLocal);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, recvPeerLocal);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.SignalLocal(Binding.role.Other()));
 
-            CreateTimeoutStates(rootStateMachine, peerPresent, init, recvPeerPresent);
+            CreateTimeoutStates(rootStateMachine, peerPresent, init, t_ => AddPilotCondition(t_));
 
             return rootStateMachine;
         }
@@ -412,7 +432,7 @@ namespace net.fushizen.avrc
         private void CreateTimeoutStates(AnimatorStateMachine rootStateMachine,
             AnimatorState present,
             AnimatorState afterTimeout,
-            string param)
+            AddTransition param)
         {
             AnimatorStateTransition t;
             var timeout = rootStateMachine.AddState(present.name + "Timeout");
@@ -423,7 +443,7 @@ namespace net.fushizen.avrc
             timeout.motion = present.motion;
 
             t = AddInstantTransition(timeout, present);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, param);
+            param(t);
 
             t = AddInstantTransition(timeout, afterTimeout);
             t.exitTime = Timeout - 0.5f;
@@ -450,16 +470,18 @@ namespace net.fushizen.avrc
             return transition;
         }
 
-        protected void AddIsLocalCondition(AnimatorStateTransition transition)
+        protected void AddIsLocalCondition(AnimatorStateTransition transition, bool isLocal = true)
         {
             AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
-            transition.AddCondition(AnimatorConditionMode.If, 1, "IsLocal");
+            transition.AddCondition(isLocal ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot, 1, "IsLocal");
         }
 
         protected Vector3 pos(float x, float y)
         {
             return new Vector3((x + 1) * 400, y * -80, 0);
         }
+
+        private delegate void AddTransition(AnimatorStateTransition transition);
 
         protected delegate AnimatorStateTransition TransitionProvider();
 
@@ -468,7 +490,5 @@ namespace net.fushizen.avrc
         protected delegate void NotEqualsCondition(AnimatorStateTransition transition, int index);
 
         protected delegate void DriveParameter(VRCAvatarParameterDriver driver, int index);
-
-        protected delegate AnimationClip ClipCreator(AvrcAnimations.LocalState local);
     }
 }

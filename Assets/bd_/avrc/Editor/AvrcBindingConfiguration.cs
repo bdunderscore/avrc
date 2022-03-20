@@ -39,23 +39,37 @@ namespace net.fushizen.avrc
         Forward
     }
 
+    [Serializable]
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
+    public enum Role
+    {
+        Init,
+        TX,
+        RX
+    }
+
+    public static class RoleExtensions
+    {
+        public static Role Other(this Role role)
+        {
+            switch (role)
+            {
+                case Role.RX: return Role.TX;
+                case Role.TX: return Role.RX;
+                default: throw new Exception($"Invalid role {role}");
+            }
+        }
+    }
+
     public class AvrcBindingConfiguration : StateMachineBehaviour
     {
-        [Serializable]
-        [SuppressMessage("ReSharper", "InconsistentNaming")]
-        public enum Role
-        {
-            Init,
-            TX,
-            RX
-        }
-
         public AvrcParameters parameters;
 
         public List<ParameterMapping> parameterMappings = new List<ParameterMapping>();
         public Role role = Role.Init;
         public float timeoutSeconds = 5.0f;
     }
+
 
     [CustomEditor(typeof(AvrcBindingConfiguration))]
     public class AvrcSavedStateEditor : Editor

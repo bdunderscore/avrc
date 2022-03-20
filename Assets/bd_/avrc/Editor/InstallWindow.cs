@@ -5,7 +5,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-using UnityEngine.Animations;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -57,7 +56,7 @@ namespace net.fushizen.avrc
                 new string[] {"", "TX", "RX"}
             );
 
-            if (roleProp.enumValueIndex != (int) AvrcBindingConfiguration.Role.RX)
+            if (roleProp.enumValueIndex != (int) Role.RX)
             {
                 using (new EditorGUI.DisabledGroupScope(_params == null ||
                                                         _params.embeddedExpressionsMenu == null &&
@@ -148,66 +147,22 @@ namespace net.fushizen.avrc
             var avrcParameters = _params;
             if (avrcParameters == null) return;
 
-            var root = CreateRoot(_targetAvatar.gameObject);
-
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
-            var names = new AvrcNames(_bindingConfig);
-            var objects = new AvrcObjects(avrcParameters, names);
-
-            _bindingConfig.role = _bindingConfig.role;
             _bindingConfig.parameters = _params;
 
-            if (_bindingConfig.role == AvrcBindingConfiguration.Role.RX)
+            var names = new AvrcNames(_bindingConfig);
+            new AvrcObjects(avrcParameters, names, _bindingConfig.role).CreateTriggers(_targetAvatar.gameObject);
+
+            if (_bindingConfig.role == Role.RX)
             {
-                objects.buildReceiverBase(root, names.Prefix);
                 AvrcRxStateMachines.SetupRx(_targetAvatar, _bindingConfig);
             }
             else
             {
-                objects.buildTransmitterBase(root, names.Prefix);
                 AvrcTxStateMachines.SetupTx(_targetAvatar, _bindingConfig);
-                InstallMenu();
             }
 
             AvrcStateSaver.SaveState(_cachedNames, _targetAvatar, _bindingConfig);
-        }
-
-        private static GameObject CreateRoot(GameObject avatar)
-        {
-            Transform rootTransform = avatar.transform.Find("AVRC");
-            GameObject root;
-            if (rootTransform != null)
-            {
-                root = rootTransform.gameObject;
-            }
-            else
-            {
-                root = new GameObject
-                {
-                    transform =
-                    {
-                        parent = avatar.transform,
-                        localPosition = Vector3.zero,
-                        localRotation = Quaternion.identity
-                    },
-                    name = "AVRC"
-                };
-                Undo.RegisterCreatedObjectUndo(root, "AVRC setup");
-            }
-
-            if (root.GetComponent<ScaleConstraint>() == null)
-            {
-                var constraint = Undo.AddComponent<ScaleConstraint>(root);
-                constraint.AddSource(new ConstraintSource
-                {
-                    weight = 1,
-                    sourceTransform = AvrcAssets.Origin().transform
-                });
-                constraint.locked = true;
-                constraint.constraintActive = true;
-            }
-
-            return root;
         }
 
         private bool IsReadyToInstall()
@@ -218,14 +173,14 @@ namespace net.fushizen.avrc
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
 
-            ok = ok && Precheck("Role is not set", _bindingConfig.role != AvrcBindingConfiguration.Role.Init);
+            ok = ok && Precheck("Role is not set", _bindingConfig.role != Role.Init);
             ok = ok && Precheck(L.INST_ERR_NO_PARAMS, _params != null);
             ok = ok && Precheck(L.INST_NO_PREFIX, _params.prefix != null && !_params.prefix.Equals(""));
             ok = ok && Precheck(L.INST_NO_AVATAR, _targetAvatar != null);
             ok = ok && Precheck(L.INST_NO_FX, AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
             ok = ok && Precheck(L.INST_MENU_FULL, !IsTargetMenuFull());
             ok = ok && Precheck($"Duplicate parameter name [{duplicateName}]", duplicateName == null);
-            if (_bindingConfig.role == AvrcBindingConfiguration.Role.RX)
+            if (_bindingConfig.role == Role.RX)
             {
                 ok = ok && Precheck($"Invalid timeout value {_bindingConfig.timeoutSeconds}",
                     _bindingConfig.timeoutSeconds > 1.0f);
@@ -392,7 +347,7 @@ namespace net.fushizen.avrc
                 drawElementCallback = OnDrawListElement,
                 elementHeightCallback = elem =>
                 {
-                    var lines = _bindingConfig.role == AvrcBindingConfiguration.Role.RX ? 2 : 1;
+                    var lines = _bindingConfig.role == Role.RX ? 2 : 1;
                     return (4 + EditorGUIUtility.singleLineHeight + 4) * lines - 4;
                 }
             };
@@ -402,7 +357,7 @@ namespace net.fushizen.avrc
 
         private string DefaultNameMapping(ParameterMapping entry)
         {
-            return _bindingConfig.role == AvrcBindingConfiguration.Role.TX
+            return _bindingConfig.role == Role.TX
                 ? $"AVRC_{_params.prefix}_{entry.avrcParameterName}"
                 : entry.avrcParameterName;
         }
@@ -443,7 +398,7 @@ namespace net.fushizen.avrc
             }
 
             if (_bindingConfigSO.FindProperty(nameof(_bindingConfig.role)).enumValueIndex ==
-                (int) AvrcBindingConfiguration.Role.RX)
+                (int) Role.RX)
             {
                 rect = initial;
                 rect.y += EditorGUIUtility.singleLineHeight + 4;

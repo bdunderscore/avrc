@@ -41,10 +41,7 @@ namespace net.fushizen.avrc
         private AnimatorStateMachine ReceiverSetupLayer()
         {
             return CommonSetupLayer(
-                Names.Prefix + "_EnableRX_",
-                Names.ParamTxLocal,
-                Names.ParamTxProximity,
-                Animations.ReceiverPresentClip
+                Names.Prefix + "_EnableRX_"
             );
         }
 
@@ -86,7 +83,6 @@ namespace net.fushizen.avrc
 
             var conditionParamName = Names.InternalParameter(parameter);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
-            AddParameter(Names.ParamTxProximity, AnimatorControllerParameterType.Float);
 
             var startup = stateMachine.AddState("Startup", pos(0, 0));
 
@@ -123,11 +119,11 @@ namespace net.fushizen.avrc
                 var hi = (i + 1.5f) * perState;
                 var lo = (i + 0.5f) * perState;
 
-                localDriven[i] = stateMachine.AddState($"LocalDriven_{parameter.name}_{i}",
+                localDriven[i] = stateMachine.AddState($"LD_{parameter.name}_{i}",
                     pos(1, i - localDriven.Length / 2.0f));
-                localDrivenUnstable[i] = stateMachine.AddState($"LocalUnstable_{parameter.name}_{i}",
+                localDrivenUnstable[i] = stateMachine.AddState($"LU_{parameter.name}_{i}",
                     pos(1.25f, i - localDriven.Length / 2.0f + 0.25f));
-                remoteDriven[i] = stateMachine.AddState($"RemoteDriven_{parameter.name}_{i}",
+                remoteDriven[i] = stateMachine.AddState($"RD_{parameter.name}_{i}",
                     pos(3, i + 0.5f - localDriven.Length / 2.0f));
 
                 var driver = ParameterDriver();
@@ -140,8 +136,7 @@ namespace net.fushizen.avrc
                 {
                     localDriven[i].motion = Animations.Named(
                         $"{Names.Prefix}_{parameter.name}_{i}_ACK",
-                        () => Animations.ConstantClip(Names.ParameterPath(parameter) + "_ACK", Parameters.baseOffset,
-                            perState * i)
+                        () => Animations.SignalClip(parameter, true, i)
                     );
                 }
 
@@ -155,39 +150,38 @@ namespace net.fushizen.avrc
                 equalsCondition(transition, i);
                 transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
 
-                // Transition back to start state on local change
+                // Transition back to start state on local change (if not two-way)
                 transition = AddInstantTransition(localDriven[i], startup);
                 notEqualsCondition(transition, i);
 
                 // Transition to receive when remote side drives a new value.
-                transition = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
-                transition.AddCondition(AnimatorConditionMode.Less, lo, conditionParamName);
-                transition.AddCondition(AnimatorConditionMode.Greater, 0, conditionParamName);
-                AddPresenceCondition(transition, Names.ParamTxProximity);
-
-                transition = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
-                transition.AddCondition(AnimatorConditionMode.Greater, hi, conditionParamName);
-                AddPresenceCondition(transition, Names.ParamTxProximity);
+                AddAntiSignalConditions(parameter, i, false, () =>
+                {
+                    var t = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
+                    AddPilotCondition(t);
+                    AddIsLocalCondition(t);
+                    return t;
+                });
 
                 // Wait a moment before we commit. This helps avoid spurious transitions when one side is moving.
                 transition = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
-                transition.AddCondition(AnimatorConditionMode.Less, lo, conditionParamName);
-                transition.AddCondition(AnimatorConditionMode.Greater, 0, conditionParamName);
-                AddPresenceCondition(transition, Names.ParamTxProximity);
+                AddSignalCondition(transition, parameter, i, false);
+                AddPilotCondition(transition);
 
-                transition = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
-                transition.AddCondition(AnimatorConditionMode.Greater, hi, conditionParamName);
-                AddPresenceCondition(transition, Names.ParamTxProximity);
+                AddAntiSignalConditions(parameter, i, false, () =>
+                {
+                    var t = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
+                    AddPilotCondition(t);
+                    return t;
+                });
 
-                AddNoPresenceTransitions(Names.ParamTxProximity,
-                    () => AddInstantTransition(localDrivenUnstable[i], localDriven[i])
-                );
+                transition = AddInstantTransition(localDrivenUnstable[i], localDriven[i]);
+                AddPilotCondition(transition, false);
 
                 // Transition back from TX driven state after receive
                 transition = AddInstantTransition(drivenByTx, remoteDriven[i]);
-                transition.AddCondition(AnimatorConditionMode.Greater, lo, conditionParamName);
-                transition.AddCondition(AnimatorConditionMode.Less, hi, conditionParamName);
-                AddPresenceCondition(transition, Names.ParamTxProximity);
+                AddSignalCondition(transition, parameter, i, false);
+                AddPilotCondition(transition);
 
                 // And back to local driven once we update the parameter. This needs to be an always-true transition.
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);

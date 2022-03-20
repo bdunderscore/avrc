@@ -18,14 +18,14 @@ namespace net.fushizen.avrc
         }
 
         internal AvrcNames(AvrcParameters parameters,
-            AvrcBindingConfiguration.Role role = AvrcBindingConfiguration.Role.TX)
+            Role role = Role.TX)
         {
             this.Prefix = parameters.prefix;
 
             ParameterMap = new Dictionary<string, string>();
             foreach (var p in parameters.avrcParams)
             {
-                ParameterMap.Add(p.name, role == AvrcBindingConfiguration.Role.TX ? $"AVRC_{Prefix}_{p.name}" : p.name);
+                ParameterMap.Add(p.name, role == Role.TX ? $"AVRC_{Prefix}_{p.name}" : p.name);
             }
         }
 
@@ -41,17 +41,6 @@ namespace net.fushizen.avrc
         internal string PubParamEitherLocal => $"AVRC_{Prefix}_EitherLocal";
         internal string PubParamPeerPresent => $"AVRC_{Prefix}_PeerPresent";
         internal string PubParamPeerLocal => $"AVRC_{Prefix}_PeerLocal";
-
-        internal string ParamRxPresent => $"_AVRCI_{Prefix}_RxPresent";
-        internal string ParamTxProximity => $"_AVRCI_{Prefix}_TxProximity";
-        internal string ParamTxActive => $"_AVRCI_{Prefix}_TxActive";
-        internal string ParamRxLocal => $"_AVRCI_{Prefix}_RxLocal";
-        internal string ParamTxLocal => $"_AVRCI_{Prefix}_TxLocal";
-
-        internal string ObjTxPresent => ObjectPath + "/$TXPresent";
-        internal string ObjTxLocal => ObjectPath + "/$TXLocal";
-        internal string ObjRxPresent => ObjectPath + "/$RXPresent";
-        internal string ObjRxLocal => ObjectPath + "/$RXLocal";
 
         internal string ParameterPath(AvrcParameters.AvrcParameter parameter)
         {
@@ -71,6 +60,40 @@ namespace net.fushizen.avrc
         public string ParameterLayerName(AvrcParameters.AvrcParameter parameter)
         {
             return $"_AVRC_{Prefix}_{parameter.name}";
+        }
+
+        public string[] SignalPilots(Role role)
+        {
+            var prefix = role == Role.RX ? "RX" : "TX";
+            return new[]
+            {
+                $"_AVRCI_{Prefix}_{prefix}Pilot1",
+                $"_AVRCI_{Prefix}_{prefix}Pilot2"
+            };
+        }
+
+        public string SignalLocal(Role role)
+        {
+            return $"_AVRCI_{Prefix}_{role.ToString()}Local";
+        }
+
+        public string[] SignalParam(AvrcParameters.AvrcParameter parameter, bool ack)
+        {
+            var suffix = ack ? "$ACK" : "";
+            var values = parameter.type == AvrcParameters.AvrcParameterType.Bool
+                ? 2
+                : parameter.maxVal - parameter.minVal + 1;
+
+            var signals = new List<string>();
+            var bits = 0;
+            while (values > 0)
+            {
+                signals.Add($"_AVRCI_{Prefix}_B{bits}_{parameter.name}{suffix}");
+                bits++;
+                values = values >> 1;
+            }
+
+            return signals.ToArray();
         }
     }
 }

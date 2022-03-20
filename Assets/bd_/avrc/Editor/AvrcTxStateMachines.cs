@@ -30,7 +30,6 @@ namespace net.fushizen.avrc
         {
             AddBidirectionalTransferParameters();
             AddOrReplaceLayer(Names.LayerSetup, TransmitterSetupLayer());
-            AddOrReplaceLayer(Names.LayerTxEnable, TransmitterEnableStateMachine());
 
             foreach (var param in Parameters.avrcParams)
             {
@@ -44,10 +43,7 @@ namespace net.fushizen.avrc
         private AnimatorStateMachine TransmitterSetupLayer()
         {
             return CommonSetupLayer(
-                Names.Prefix + "_EnableTX_",
-                Names.ParamRxLocal,
-                Names.ParamRxPresent,
-                Animations.TransmitterPresentClip
+                Names.Prefix + "_EnableTX_"
             );
         }
 
@@ -89,55 +85,6 @@ namespace net.fushizen.avrc
             Avatar.expressionParameters.parameters = parameters.ToArray();
         }
 
-        private AnimatorStateMachine TransmitterEnableStateMachine()
-        {
-            AddParameter(Names.ParamTxActive, AnimatorControllerParameterType.Int);
-
-            AnimatorStateMachine rootStateMachine = new AnimatorStateMachine();
-            var entry = rootStateMachine.AddState("Idle");
-
-            entry.motion = AvrcAssets.EmptyClip();
-            entry.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.ParamTxActive, 0, false)};
-
-            var timeout = rootStateMachine.AddState("Timeout");
-            timeout.motion = entry.motion;
-
-            // After 5s without any contact from the transmitter, go inactive (this resets bidirectional variable states)
-            var t = rootStateMachine.AddAnyStateTransition(timeout);
-            t.exitTime = 0;
-            t.hasExitTime = false;
-            t.duration = 0;
-            t.canTransitionToSelf = false;
-            // We use max value here (minus epsilon) because we are uninterested in whether communication is precise,
-            // just whether the TX is present here at all
-            t.AddCondition(AnimatorConditionMode.Greater, 1.0f - EPSILON, Names.ParamRxPresent);
-            t.AddCondition(AnimatorConditionMode.Equals, 1, Names.ParamTxActive);
-
-            t = timeout.AddTransition(entry);
-            t.exitTime = 5;
-            t.hasExitTime = true;
-            t.duration = 0;
-
-            var rxPresentDelay = rootStateMachine.AddState("Delay");
-            rxPresentDelay.motion = entry.motion;
-            rxPresentDelay.behaviours = new StateMachineBehaviour[] {ParameterDriver(Names.ParamTxActive, 1, false)};
-
-            t = AddInstantTransition(entry, rxPresentDelay);
-            AddPresenceCondition(t, Names.ParamRxPresent);
-
-            var rxPresent = rootStateMachine.AddState("RxPresent");
-            rxPresent.motion = entry.motion;
-
-            t = AddInstantTransition(rxPresentDelay, rxPresent);
-            t.AddCondition(AnimatorConditionMode.Equals, 1, Names.ParamTxActive); // always true
-
-            // Cancel timeout if we see the RX again
-            t = AddInstantTransition(timeout, rxPresent);
-            t.AddCondition(AnimatorConditionMode.Less, 1.0f - EPSILON, Names.ParamRxPresent);
-
-            return rootStateMachine;
-        }
-
         protected override AnimatorStateMachine OneWayParamLayer(
             AvrcParameters.AvrcParameter parameter,
             int values,
@@ -155,8 +102,7 @@ namespace net.fushizen.avrc
                 states[i] = rootStateMachine.AddState(parameter.name + "_" + i);
                 states[i].motion = Animations.Named(
                     Names.Prefix + "_" + parameter.name + "_" + i,
-                    () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset,
-                        perState * (i + 1))
+                    () => Animations.SignalClip(parameter, false, i)
                 );
 
                 // TODO minimize any state transitions
@@ -187,25 +133,25 @@ namespace net.fushizen.avrc
             var disconnected = stateMachine.AddState("Disconnected");
             disconnected.motion = idleMotion;
 
-            var t = AddInstantAnyTransition(stateMachine, disconnected);
-            t.AddCondition(AnimatorConditionMode.Equals, 0, Names.ParamTxActive);
+            var transition = AddInstantAnyTransition(stateMachine, disconnected);
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
 
             var rx = stateMachine.AddState("Receive");
             rx.motion = idleMotion;
             rx.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.TxParameterFlag(Names), 0)};
-            t = AddInstantTransition(disconnected, rx);
-            t.AddCondition(AnimatorConditionMode.Equals, 1, Names.ParamTxActive);
+            transition = AddInstantTransition(disconnected, rx);
+            transition.AddCondition(AnimatorConditionMode.If, 1, Names.PubParamPeerPresent);
             // This transition controls entry to all passive and active states, so gate it to be
             // IsLocal only.
-            AddIsLocalCondition(t);
+            AddIsLocalCondition(transition);
 
             var triggerEntry = stateMachine.AddState("TriggerEntry");
             triggerEntry.motion = idleMotion;
             AddParameter(parameter.TxParameterFlag(Names), AnimatorControllerParameterType.Bool);
-            t = AddInstantTransition(disconnected, triggerEntry);
-            t.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
-            t = AddInstantTransition(triggerEntry, disconnected);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
+            transition = AddInstantTransition(disconnected, triggerEntry);
+            transition.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
+            transition = AddInstantTransition(triggerEntry, disconnected);
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
 
             var tx = stateMachine.AddState("Transmit");
             tx.motion = idleMotion;
@@ -234,20 +180,19 @@ namespace net.fushizen.avrc
                 triggerStates[i] = stateMachine.AddState($"Trigger[{i}]");
                 triggerStates[i].motion = Animations.Named(
                     $"{Names.Prefix}_{parameter.name}_{i}",
-                    () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset,
-                        perState * (i + 1))
+                    () => Animations.SignalClip(parameter, false, i)
                 );
 
                 activeStates[i].behaviours = new StateMachineBehaviour[]
                     {ParameterDriver(parameter.TxParameterFlag(Names), 1)};
 
-                t = AddInstantTransition(triggerStates[i], disconnected);
-                t.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
-                t = AddInstantTransition(triggerStates[i], disconnected);
-                notEqualsCondition(t, i);
-                t = AddInstantTransition(triggerEntry, triggerStates[i]);
-                t.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
-                equalsCondition(t, i);
+                transition = AddInstantTransition(triggerStates[i], disconnected);
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
+                transition = AddInstantTransition(triggerStates[i], disconnected);
+                notEqualsCondition(transition, i);
+                transition = AddInstantTransition(triggerEntry, triggerStates[i]);
+                transition.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
+                equalsCondition(transition, i);
             }
 
             var ackParam = Names.InternalParameter(parameter, "ACK");
@@ -255,48 +200,39 @@ namespace net.fushizen.avrc
 
             for (int i = 0; i < passiveStates.Length; i++)
             {
-                float rxRangeLow = perState * (i - 0.5f);
-                float rxRangeHi = perState * (i + 0.5f);
-
                 // Write TX variable on entering passive state
                 var driver = ParameterDriver(parameter.TxParameterFlag(Names), 0);
                 driveParameter(driver, i);
                 passiveStates[i].behaviours = new StateMachineBehaviour[] {driver};
 
                 // Entry into passive state from rx
-                var transition = AddInstantTransition(rx, passiveStates[i]);
-                transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
-                transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
-                AddPresenceCondition(transition, Names.ParamRxPresent);
+                transition = AddInstantTransition(rx, passiveStates[i]);
+                AddSignalCondition(transition, parameter, i, true);
+                AddPilotCondition(transition);
 
                 // Exit from passive to rx when ack value changes
-                transition = AddInstantTransition(passiveStates[i], rx);
-                equalsCondition(transition, i);
-                transition.AddCondition(AnimatorConditionMode.Greater, rxRangeHi, ackParam);
-                AddPresenceCondition(transition, Names.ParamRxPresent);
-
-                transition = AddInstantTransition(passiveStates[i], rx);
-                equalsCondition(transition, i);
-                transition.AddCondition(AnimatorConditionMode.Less, rxRangeLow, ackParam);
-                AddPresenceCondition(transition, Names.ParamRxPresent);
+                AddAntiSignalConditions(parameter, i, true, () =>
+                {
+                    var t = AddInstantTransition(passiveStates[i], rx);
+                    AddPilotCondition(t);
+                    return t;
+                });
 
                 // Start transmitting when: Local value changes, and remote has not changed
                 transition = AddInstantTransition(passiveStates[i], tx);
-                transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
-                transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
-                AddPresenceCondition(transition, Names.ParamRxPresent);
+                AddSignalCondition(transition, parameter, i, true);
+                AddPilotCondition(transition);
                 notEqualsCondition(transition, i);
 
                 // TX to active transition
                 transition = AddInstantTransition(tx, activeStates[i]);
-                AddPresenceCondition(transition, Names.ParamRxPresent);
+                AddPilotCondition(transition);
                 equalsCondition(transition, i);
 
                 // Exit from active state when acknowledged
                 transition = AddInstantTransition(activeStates[i], passiveStates[i]);
-                transition.AddCondition(AnimatorConditionMode.Greater, rxRangeLow, ackParam);
-                transition.AddCondition(AnimatorConditionMode.Less, rxRangeHi, ackParam);
-                AddPresenceCondition(transition, Names.ParamRxPresent);
+                AddSignalCondition(transition, parameter, i, true);
+                AddPilotCondition(transition);
             }
 
             return stateMachine;
