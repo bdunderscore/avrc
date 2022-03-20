@@ -5,6 +5,8 @@
 !bd_.meta
 !bd_/avrc.meta
 !bd_/avrc/**
+!bd_/avrc_dev_util.meta
+!bd_/avrc_dev_util/**
 
 bd_/avrc/Generated/**
 bd_/avrc/Generated.meta
