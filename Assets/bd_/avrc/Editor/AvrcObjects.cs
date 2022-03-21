@@ -38,7 +38,7 @@ namespace net.fushizen.avrc
             obj.name = name;
             obj.transform.parent = _baseObject.transform;
             obj.transform.localPosition = _pos;
-            _pos += new Vector3(Separation, 0, 0);
+            _pos += new Vector3(0, Separation, 0);
             Undo.RegisterCreatedObjectUndo(obj, "AVRC setup");
 
             ContactBase contact;
