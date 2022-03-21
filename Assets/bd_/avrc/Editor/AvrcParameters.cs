@@ -43,7 +43,6 @@ namespace net.fushizen.avrc
         public AvrcParameters()
         {
             avrcParams = new List<AvrcParameter>();
-            guid = GUID.Generate();
         }
 
         [Serializable]

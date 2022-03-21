@@ -336,7 +336,7 @@ namespace net.fushizen.avrc
             AddParameter(Names.PubParamPeerLocal, AnimatorControllerParameterType.Bool);
             AddParameter(Names.PubParamPeerPresent, AnimatorControllerParameterType.Bool);
 
-            var init = rootStateMachine.AddState("Init");
+            var init = rootStateMachine.AddState("Init", pos(1, 3.5f));
             init.motion = Animations.Named(
                 animPrefix + "Init",
                 () => Animations.PresenceClip(AvrcAnimations.LocalState.Unknown, Binding.role)
@@ -350,7 +350,7 @@ namespace net.fushizen.avrc
                 )
             };
 
-            var ownerLocal = rootStateMachine.AddState("OwnerLocal");
+            var ownerLocal = rootStateMachine.AddState("OwnerLocal", pos(1, 0));
             ownerLocal.motion = Animations.Named(
                 animPrefix + "OwnerLocal",
                 () => Animations.PresenceClip(AvrcAnimations.LocalState.OwnerLocal, Binding.role)
@@ -366,7 +366,7 @@ namespace net.fushizen.avrc
                 )
             };
 
-            var ownerLocalTxPresent = rootStateMachine.AddState("OwnerLocalTxPresent");
+            var ownerLocalTxPresent = rootStateMachine.AddState("OwnerLocalTxPresent", pos(2, -1));
             ownerLocalTxPresent.motion = ownerLocal.motion;
             ownerLocalTxPresent.behaviours = new StateMachineBehaviour[]
             {
@@ -379,9 +379,10 @@ namespace net.fushizen.avrc
             t = AddInstantTransition(ownerLocal, ownerLocalTxPresent);
             AddPilotCondition(t);
 
-            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal, t_ => AddPilotCondition(t_));
+            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal, t_ => AddPilotCondition(t_),
+                pos(2, 1));
 
-            var peerLocal = rootStateMachine.AddState("PeerLocal");
+            var peerLocal = rootStateMachine.AddState("PeerLocal", pos(2, 3));
             peerLocal.motion = Animations.Named(
                 animPrefix + "PeerLocal",
                 () => Animations.PresenceClip(AvrcAnimations.LocalState.PeerLocal, Binding.role)
@@ -405,9 +406,11 @@ namespace net.fushizen.avrc
                     AnimatorConditionMode.Greater,
                     0.5f,
                     Names.SignalLocal(Binding.role.Other()).ParamName
-                ));
+                ),
+                pos(2, 2)
+            );
 
-            var peerPresent = rootStateMachine.AddState("PeerPresent");
+            var peerPresent = rootStateMachine.AddState("PeerPresent", pos(2, 4));
             peerPresent.motion = init.motion;
             t = AddInstantTransition(init, peerPresent);
             AddPilotCondition(t);
@@ -426,7 +429,7 @@ namespace net.fushizen.avrc
             t = AddInstantTransition(peerPresent, peerLocal);
             t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.SignalLocal(Binding.role.Other()).ParamName);
 
-            CreateTimeoutStates(rootStateMachine, peerPresent, init, t_ => AddPilotCondition(t_));
+            CreateTimeoutStates(rootStateMachine, peerPresent, init, t_ => AddPilotCondition(t_), pos(2, 5));
 
             return rootStateMachine;
         }
@@ -434,10 +437,18 @@ namespace net.fushizen.avrc
         private void CreateTimeoutStates(AnimatorStateMachine rootStateMachine,
             AnimatorState present,
             AnimatorState afterTimeout,
-            AddTransition param)
+            AddTransition param,
+            Vector2? pos = null
+        )
         {
             AnimatorStateTransition t;
-            var timeout = rootStateMachine.AddState(present.name + "Timeout");
+            AnimatorState timeout;
+
+            if (pos != null)
+                timeout = rootStateMachine.AddState(present.name + "Timeout", pos.Value);
+            else
+                timeout = rootStateMachine.AddState(present.name + "Timeout");
+
             timeout.motion = afterTimeout.motion;
             t = AddInstantTransition(present, timeout);
             t.exitTime = 0.5f;

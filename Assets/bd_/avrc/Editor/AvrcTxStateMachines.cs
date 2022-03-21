@@ -97,9 +97,10 @@ namespace net.fushizen.avrc
 
             AnimatorState[] states = new AnimatorState[values];
             float perState = 1.0f / (states.Length + 1);
+            var ybias = -states.Length / 2.0f;
             for (int i = 0; i < states.Length; i++)
             {
-                states[i] = rootStateMachine.AddState(parameter.name + "_" + i);
+                states[i] = rootStateMachine.AddState(parameter.name + "_" + i, pos(1, ybias + i));
                 states[i].motion = Animations.Named(
                     Names.Prefix + "_" + parameter.name + "_" + i,
                     () => Animations.SignalClip(parameter, false, i)
@@ -130,13 +131,17 @@ namespace net.fushizen.avrc
             );
 
             AnimatorStateMachine stateMachine = new AnimatorStateMachine();
-            var disconnected = stateMachine.AddState("Disconnected");
+
+            stateMachine.entryPosition = pos(1, 0);
+            stateMachine.anyStatePosition = pos(1, -1);
+
+            var disconnected = stateMachine.AddState("Disconnected", pos(2, 0));
             disconnected.motion = idleMotion;
 
             var transition = AddInstantAnyTransition(stateMachine, disconnected);
             transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
 
-            var rx = stateMachine.AddState("Receive");
+            var rx = stateMachine.AddState("Receive", pos(3, 0));
             rx.motion = idleMotion;
             rx.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.TxParameterFlag(Names), 0)};
             transition = AddInstantTransition(disconnected, rx);
@@ -145,7 +150,7 @@ namespace net.fushizen.avrc
             // IsLocal only.
             AddIsLocalCondition(transition);
 
-            var triggerEntry = stateMachine.AddState("TriggerEntry");
+            var triggerEntry = stateMachine.AddState("TriggerEntry", pos(2, 1 + values / 2.0f));
             triggerEntry.motion = idleMotion;
             AddParameter(parameter.TxParameterFlag(Names), AnimatorControllerParameterType.Bool);
             transition = AddInstantTransition(disconnected, triggerEntry);
@@ -153,9 +158,11 @@ namespace net.fushizen.avrc
             transition = AddInstantTransition(triggerEntry, disconnected);
             transition.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
 
-            var tx = stateMachine.AddState("Transmit");
+            var tx = stateMachine.AddState("Transmit", pos(5, 0));
             tx.motion = idleMotion;
             tx.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.TxParameterFlag(Names), 0)};
+
+            var ybias_owner = 0.5f - values / 2.0f;
 
             // These states indicate that the transmitter and receiver are in sync.
             // They also force the transmitter state to match the receiver on entry.
@@ -173,11 +180,11 @@ namespace net.fushizen.avrc
 
             for (int i = 0; i < passiveStates.Length; i++)
             {
-                passiveStates[i] = stateMachine.AddState($"Passive[{i}]");
+                passiveStates[i] = stateMachine.AddState($"Passive[{i}]", pos(4, ybias_owner + i));
                 passiveStates[i].motion = idleMotion;
-                activeStates[i] = stateMachine.AddState($"Active[{i}]");
+                activeStates[i] = stateMachine.AddState($"Active[{i}]", pos(6, ybias_owner + i));
                 activeStates[i].motion = idleMotion;
-                triggerStates[i] = stateMachine.AddState($"Trigger[{i}]");
+                triggerStates[i] = stateMachine.AddState($"Trigger[{i}]", pos(1, 1 + i));
                 triggerStates[i].motion = Animations.Named(
                     $"{Names.Prefix}_{parameter.name}_{i}",
                     () => Animations.SignalClip(parameter, false, i)
