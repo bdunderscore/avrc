@@ -1,41 +1,75 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 
 namespace net.fushizen.avrc
 {
+    [Serializable]
+    public enum GlobalLayerType
+    {
+        NotGlobalLayer,
+        BoundsSetup
+    }
+
     public class AvrcLayerMarker : StateMachineBehaviour
     {
-        [HideInInspector] public AvrcParameters parameters;
+        public AvrcParameters Parameters;
+        public GlobalLayerType GlobalLayerType;
 
-        internal static void MarkLayer(AnimatorStateMachine stateMachine, AvrcParameters parameters)
+        internal static void MarkLayer(
+            AnimatorStateMachine stateMachine,
+            AvrcParameters parameters = null,
+            GlobalLayerType globalLayerType = GlobalLayerType.NotGlobalLayer
+        )
         {
-            var startState = stateMachine.defaultState;
+            var behaviour = stateMachine.behaviours.OfType<AvrcLayerMarker>().FirstOrDefault();
 
-            var existingBehavior = startState.behaviours.OfType<AvrcLayerMarker>().FirstOrDefault();
-
-            if (existingBehavior == null)
+            if (behaviour == null)
             {
-                var list = new List<StateMachineBehaviour>(startState.behaviours);
-                existingBehavior = CreateInstance<AvrcLayerMarker>();
-                list.Add(existingBehavior);
-                startState.behaviours = list.ToArray();
+                var list = new List<StateMachineBehaviour>(stateMachine.behaviours);
+                behaviour = CreateInstance<AvrcLayerMarker>();
+                list.Add(behaviour);
+                stateMachine.behaviours = list.ToArray();
             }
 
-            existingBehavior.parameters = parameters;
+            behaviour.hideFlags = HideFlags.NotEditable;
+            behaviour.name = "AVRC Layer Marker";
+            behaviour.GlobalLayerType = globalLayerType;
+            behaviour.Parameters = parameters;
         }
 
         internal static bool IsAvrcLayer(AnimatorControllerLayer layer)
         {
-            return layer.stateMachine.defaultState.behaviours.OfType<AvrcLayerMarker>().Any();
+            return layer.stateMachine != null &&
+                   (layer.stateMachine.behaviours?.OfType<AvrcLayerMarker>().Any() ?? false);
         }
 
         internal static bool IsMatchingLayer(AnimatorControllerLayer layer, AvrcParameters parameters)
         {
-            return layer.stateMachine.defaultState.behaviours.OfType<AvrcLayerMarker>().Any(
-                behavior => behavior.parameters == parameters
+            return layer.stateMachine != null && (
+                layer.stateMachine.behaviours?.OfType<AvrcLayerMarker>().Any(
+                    behavior => behavior.Parameters == parameters
+                ) ?? false
             );
+        }
+    }
+
+    [CustomEditor(typeof(AvrcLayerMarker))]
+    internal class AvrcLayerMarkerInspector : Editor
+    {
+        private bool foldout;
+
+        public override void OnInspectorGUI()
+        {
+            foldout = EditorGUILayout.Foldout(foldout, "Debug display");
+            if (foldout)
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    base.OnInspectorGUI();
+                }
         }
     }
 }

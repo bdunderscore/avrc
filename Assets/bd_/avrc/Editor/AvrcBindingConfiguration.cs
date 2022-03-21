@@ -75,9 +75,16 @@ namespace net.fushizen.avrc
     [CustomEditor(typeof(AvrcBindingConfiguration))]
     public class AvrcSavedStateEditor : Editor
     {
+        private bool foldout;
+
         public override void OnInspectorGUI()
         {
-            // no inspectable attributes
+            foldout = EditorGUILayout.Foldout(foldout, "Debug display");
+            if (foldout)
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    base.OnInspectorGUI();
+                }
         }
     }
 
@@ -106,44 +113,44 @@ namespace net.fushizen.avrc
             return entryState.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
         }
 
-        private static AnimatorState FindStateForStorage(AvrcParameters parameters, VRCAvatarDescriptor descriptor)
+        private static AnimatorStateMachine FindStateForStorage(AvrcParameters parameters,
+            VRCAvatarDescriptor descriptor)
         {
             var layers = AvrcAnimatorUtils.FindFxLayer(descriptor)?.layers;
             if (layers == null) return null;
 
             var setupLayer = layers.Where(l =>
             {
-                return l.stateMachine != null && l.stateMachine.defaultState != null &&
-                       (l.stateMachine.defaultState.behaviours?.OfType<AvrcLayerMarker>()
-                            ?.Any(m => m.parameters == parameters)
+                return l.stateMachine != null &&
+                       (l.stateMachine.behaviours?.OfType<AvrcLayerMarker>()
+                            ?.Any(m => m.Parameters == parameters)
                         ?? false);
             }).FirstOrDefault()?.stateMachine;
             if (setupLayer == null) return null;
 
-            var entryState = setupLayer.defaultState;
-            return entryState;
+            return setupLayer;
         }
 
         internal static void SaveState(VRCAvatarDescriptor descriptor, AvrcBindingConfiguration state)
         {
-            var entryState = FindStateForStorage(state.parameters, descriptor);
-            if (entryState == null) throw new Exception("Couldn't find entry state in setup layer");
+            var setupStateMachine = FindStateForStorage(state.parameters, descriptor);
+            if (setupStateMachine == null) throw new Exception("Couldn't find entry state in setup layer");
 
-            var existingState = entryState.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
+            var existingState = setupStateMachine.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
             if (existingState == null)
             {
                 existingState = Object.Instantiate(state);
-                var tmpList = new List<StateMachineBehaviour>(entryState.behaviours);
+                var tmpList = new List<StateMachineBehaviour>(setupStateMachine.behaviours);
                 tmpList.Add(existingState);
-                entryState.behaviours = tmpList.ToArray();
-                var assetPath = AssetDatabase.GetAssetPath(entryState);
+                setupStateMachine.behaviours = tmpList.ToArray();
+                var assetPath = AssetDatabase.GetAssetPath(setupStateMachine);
                 AssetDatabase.AddObjectToAsset(existingState, assetPath);
-                EditorUtility.SetDirty(entryState);
+                EditorUtility.SetDirty(setupStateMachine);
             }
 
             EditorUtility.CopySerialized(state, existingState);
-            existingState.hideFlags = HideFlags.HideInInspector;
-            existingState.name = $"AVRC Binding Config for ${existingState.parameters.name}";
+            existingState.hideFlags = HideFlags.NotEditable;
+            existingState.name = $"AVRC Binding Config for {existingState.parameters.name}";
             EditorUtility.SetDirty(existingState);
         }
     }
