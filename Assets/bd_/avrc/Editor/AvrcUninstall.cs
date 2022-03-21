@@ -19,13 +19,13 @@ namespace net.fushizen.avrc
             {
                 return avatarDescriptor.transform.Find(names.ObjectPath) != null
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
-                       .Any(layer => layer.name.StartsWith(names.LayerPrefix));
+                       .Any(layer => AvrcLayerMarker.IsAvrcLayer(layer));
             }
             else
             {
                 return avatarDescriptor.transform.Find("AVRC") != null
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
-                       .Any(layer => layer.name.StartsWith("_AVRC"));
+                       .Any(layer => AvrcLayerMarker.IsMatchingLayer(layer, parameters));
             }
         }
 
@@ -82,6 +82,20 @@ namespace net.fushizen.avrc
                 fx.parameters = fx.parameters
                     .Where(parameter => paramPrefixes.All(prefix => !parameter.name.StartsWith(prefix)))
                     .ToArray();
+
+                var avrcLayers = fx.layers.SelectMany(l =>
+                {
+                    GlobalLayerType ty;
+
+                    if (AvrcLayerMarker.IsAvrcLayer(l, out ty))
+                        return new[] {(ty, l)};
+                    return Array.Empty<(GlobalLayerType, AnimatorControllerLayer)>();
+                }).ToArray();
+
+                if (avrcLayers.Length > 0 && avrcLayers.All(pair => pair.Item1 != GlobalLayerType.NotGlobalLayer))
+                    // Purge all AVRC layers
+                    fx.layers = fx.layers.Where(l => !AvrcLayerMarker.IsAvrcLayer(l)).ToArray();
+
                 EditorUtility.SetDirty(fx);
                 AvrcAnimatorUtils.GarbageCollectAnimatorAsset(fx);
             }
