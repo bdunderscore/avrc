@@ -38,6 +38,12 @@ namespace net.fushizen.avrc
             // ReSharper disable once LocalVariableHidesMember
             AvrcParameters target = this.target as AvrcParameters;
 
+            if (target.guid.Empty())
+            {
+                target.guid = GUID.Generate();
+                EditorUtility.SetDirty(target);
+            }
+
             Localizations.SwitchLanguageButton();
 
             if (GUILayout.Button(L.AP_INSTALL))
@@ -83,7 +89,7 @@ namespace net.fushizen.avrc
                 MenuCloner.InitCloner(target)?.SyncMenus(target.sourceExpressionMenu);
             }*/
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)), L.AP_PREFIX);
+            //EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(AvrcParameters.prefix)), L.AP_PREFIX);
             EditorGUILayout.Separator();
 
             Rect rect = GUILayoutUtility.GetRect(100, _paramsList.GetHeight(), new GUIStyle());

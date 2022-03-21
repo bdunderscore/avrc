@@ -67,7 +67,7 @@ namespace net.fushizen.avrc
 
             foreach (var bit in _names.SignalParam(param, isAck))
             {
-                clip.SetCurve($"{_names.ObjectPath}/{bit}", typeof(GameObject), "m_IsActive",
+                clip.SetCurve($"{_names.ObjectPath}/{bit.ObjectName}", typeof(GameObject), "m_IsActive",
                     AnimationCurve.Constant(0, 1, index & 1));
                 index >>= 1;
             }
@@ -81,7 +81,8 @@ namespace net.fushizen.avrc
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(ParentConstraint), "m_Active", AnimationCurve.Constant(0, 1, 1));
 
-            clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role)}", typeof(GameObject), "m_IsActive",
+            clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role).ObjectName}", typeof(GameObject),
+                "m_IsActive",
                 AnimationCurve.Constant(0, 1, local == LocalState.OwnerLocal ? 1.0f : 0.0f));
 
             // TODO: Control parameter contact activation?

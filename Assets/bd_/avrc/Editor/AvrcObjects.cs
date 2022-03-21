@@ -30,12 +30,12 @@ namespace net.fushizen.avrc
         }
 
         private void CreateTriggerPair(
-            string name,
+            Signal signal,
             Role sender = Role.TX
         )
         {
             var obj = new GameObject();
-            obj.name = name;
+            obj.name = signal.ObjectName;
             obj.transform.parent = _baseObject.transform;
             obj.transform.localPosition = _pos;
             _pos += new Vector3(0, Separation, 0);
@@ -50,7 +50,7 @@ namespace net.fushizen.avrc
             {
                 var receiver = obj.AddComponent<VRCContactReceiver>();
                 contact = receiver;
-                receiver.parameter = name;
+                receiver.parameter = signal.ParamName;
                 receiver.receiverType = ContactReceiver.ReceiverType.Constant;
                 receiver.value = 1.0f;
             }
@@ -58,7 +58,7 @@ namespace net.fushizen.avrc
             contact.shapeType = ContactBase.ShapeType.Sphere;
             contact.radius = Diameter * 0.5f;
             contact.position = _pos;
-            contact.collisionTags = new List<string>(new[] {name});
+            contact.collisionTags = new List<string>(new[] {signal.TagName});
         }
 
         internal void CreateTriggers(GameObject avatar)

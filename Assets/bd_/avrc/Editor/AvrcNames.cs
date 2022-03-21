@@ -1,15 +1,35 @@
 ﻿using System.Collections.Generic;
+using UnityEditor;
 
 namespace net.fushizen.avrc
 {
+    internal class Signal
+    {
+        private readonly AvrcNames _names;
+        private readonly string _suffix;
+
+        public Signal(AvrcNames names, string suffix)
+        {
+            _names = names;
+            _suffix = suffix;
+        }
+
+        internal string ObjectName => $"_AVRCI_{_names.Prefix}_{_suffix}";
+        internal string ParamName => ObjectName;
+        internal string TagName => $"_AVRCI_{_names.ParamsGUID}_{_suffix}";
+    }
+
     internal class AvrcNames
     {
         internal readonly Dictionary<string, string> ParameterMap;
+        internal readonly GUID ParamsGUID;
 
         internal readonly string Prefix;
 
         internal AvrcNames(AvrcBindingConfiguration binding) : this(binding.parameters, binding.role)
         {
+            if (!string.IsNullOrEmpty(binding.layerName)) Prefix = binding.layerName;
+
             foreach (var nameOverride in binding.parameterMappings)
             {
                 if (!string.IsNullOrWhiteSpace(nameOverride.remappedParameterName))
@@ -17,10 +37,10 @@ namespace net.fushizen.avrc
             }
         }
 
-        internal AvrcNames(AvrcParameters parameters,
-            Role role = Role.TX)
+        internal AvrcNames(AvrcParameters parameters, Role role = Role.TX)
         {
-            this.Prefix = parameters.prefix;
+            Prefix = parameters.name;
+            ParamsGUID = parameters.guid;
 
             ParameterMap = new Dictionary<string, string>();
             foreach (var p in parameters.avrcParams)
@@ -62,33 +82,38 @@ namespace net.fushizen.avrc
             return $"_AVRC_{Prefix}_{parameter.name}";
         }
 
-        public string[] SignalPilots(Role role)
+        public Signal[] SignalPilots(Role role)
         {
-            var prefix = role == Role.RX ? "RX" : "TX";
+            var rolePrefix = role == Role.RX ? "RX" : "TX";
             return new[]
             {
-                $"_AVRCI_{Prefix}_{prefix}Pilot1",
-                $"_AVRCI_{Prefix}_{prefix}Pilot2"
+                new Signal(this, role + "Pilot1"),
+                new Signal(this, role + "Pilot2")
             };
         }
 
-        public string SignalLocal(Role role)
+        public Signal SignalLocal(Role role)
         {
-            return $"_AVRCI_{Prefix}_{role.ToString()}Local";
+            return new Signal(this, role + "Local");
         }
 
-        public string[] SignalParam(AvrcParameters.AvrcParameter parameter, bool ack)
+        public string SignalLocalTag(Role role)
+        {
+            return $"_AVRCI_{ParamsGUID}_{role.ToString()}Local";
+        }
+
+        public Signal[] SignalParam(AvrcParameters.AvrcParameter parameter, bool ack)
         {
             var suffix = ack ? "$ACK" : "";
             var values = parameter.type == AvrcParameters.AvrcParameterType.Bool
                 ? 2
                 : parameter.maxVal - parameter.minVal + 1;
 
-            var signals = new List<string>();
+            var signals = new List<Signal>();
             var bits = 0;
             while (values > 0)
             {
-                signals.Add($"_AVRCI_{Prefix}_B{bits}_{parameter.name}{suffix}");
+                signals.Add(new Signal(this, $"B{bits}_{parameter.name}{suffix}"));
                 bits++;
                 values = values >> 1;
             }

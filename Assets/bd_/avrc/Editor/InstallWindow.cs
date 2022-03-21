@@ -77,6 +77,7 @@ namespace net.fushizen.avrc
                     {
                         // placeholder
                         EditorGUILayout.TextField("Timeout (seconds)", "");
+                        EditorGUILayout.TextField("Layer name", "");
                     }
                     else
                     {
@@ -86,6 +87,10 @@ namespace net.fushizen.avrc
                             new GUIContent("Timeout (seconds)")
                         );
                         if (timeoutProp.floatValue < 1.0f) timeoutProp.floatValue = 1.0f;
+                        EditorGUILayout.PropertyField(
+                            _bindingConfigSO.FindProperty(nameof(_bindingConfig.layerName)),
+                            new GUIContent("Layer name")
+                        );
                     }
                 }
             }
@@ -110,7 +115,8 @@ namespace net.fushizen.avrc
             {
                 if (GUILayout.Button(L.INST_UNINSTALL))
                 {
-                    AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, _params);
+                    _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
+                    AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, _bindingConfig);
                 }
             }
 
@@ -149,6 +155,13 @@ namespace net.fushizen.avrc
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
             _bindingConfig.parameters = _params;
+            if (string.IsNullOrWhiteSpace(_bindingConfig.layerName)) _bindingConfig.layerName = _params.name;
+            EditorUtility.SetDirty(_bindingConfig);
+
+            var oldConfig = AvrcStateSaver.LoadStateWithoutCloning(_params, _targetAvatar);
+            if (oldConfig != null && oldConfig.layerName != _bindingConfig.layerName)
+                // Clean up old layers and internal parameters
+                AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, oldConfig);
 
             var names = new AvrcNames(_bindingConfig);
             new AvrcObjects(avrcParameters, names, _bindingConfig.role).CreateTriggers(_targetAvatar.gameObject);
@@ -162,7 +175,7 @@ namespace net.fushizen.avrc
                 AvrcTxStateMachines.SetupTx(_targetAvatar, _bindingConfig);
             }
 
-            AvrcStateSaver.SaveState(_cachedNames, _targetAvatar, _bindingConfig);
+            AvrcStateSaver.SaveState(_targetAvatar, _bindingConfig);
         }
 
         private bool IsReadyToInstall()
@@ -175,7 +188,6 @@ namespace net.fushizen.avrc
 
             ok = ok && Precheck("Role is not set", _bindingConfig.role != Role.Init);
             ok = ok && Precheck(L.INST_ERR_NO_PARAMS, _params != null);
-            ok = ok && Precheck(L.INST_NO_PREFIX, _params.prefix != null && !_params.prefix.Equals(""));
             ok = ok && Precheck(L.INST_NO_AVATAR, _targetAvatar != null);
             ok = ok && Precheck(L.INST_NO_FX, AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
             ok = ok && Precheck(L.INST_MENU_FULL, !IsTargetMenuFull());
@@ -330,7 +342,7 @@ namespace net.fushizen.avrc
             }
 
             _cachedNames = new AvrcNames(_params);
-            _bindingConfig = AvrcStateSaver.LoadState(_cachedNames, _targetAvatar);
+            _bindingConfig = AvrcStateSaver.LoadState(_params, _targetAvatar);
 
             InitBindingList();
         }
@@ -358,7 +370,7 @@ namespace net.fushizen.avrc
         private string DefaultNameMapping(ParameterMapping entry)
         {
             return _bindingConfig.role == Role.TX
-                ? $"AVRC_{_params.prefix}_{entry.avrcParameterName}"
+                ? $"AVRC_{_params.name}_{entry.avrcParameterName}"
                 : entry.avrcParameterName;
         }
 
