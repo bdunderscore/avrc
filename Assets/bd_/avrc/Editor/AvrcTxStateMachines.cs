@@ -29,6 +29,8 @@ namespace net.fushizen.avrc
         private void Setup()
         {
             AddBidirectionalTransferParameters();
+
+            CreateGlobalDefaultsLayer();
             AddOrReplaceLayer(Names.LayerSetup, TransmitterSetupLayer());
 
             foreach (var param in Parameters.avrcParams)

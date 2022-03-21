@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Animations;
+using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace net.fushizen.avrc
 {
@@ -47,6 +48,22 @@ namespace net.fushizen.avrc
             return clip;
         }
 
+        internal AnimationClip GlobalDefaultsClip()
+        {
+            var clip = new AnimationClip();
+            clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.x",
+                AnimationCurve.Constant(0, 1, 0.01f)
+            );
+            clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.y",
+                AnimationCurve.Constant(0, 1, 0.01f)
+            );
+            clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.z",
+                AnimationCurve.Constant(0, 1, 0.01f)
+            );
+
+            return clip;
+        }
+
         internal AnimationClip ConstantClip(string path, Vector3 baseOffset, float value)
         {
             AnimationClip clip = new AnimationClip();
@@ -80,6 +97,11 @@ namespace net.fushizen.avrc
             var path = _names.ObjectPath;
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(ParentConstraint), "m_Active", AnimationCurve.Constant(0, 1, 1));
+
+            foreach (var pilotSignal in _names.SignalPilots(role))
+                clip.SetCurve($"{_names.ObjectPath}/{pilotSignal.ObjectName}", typeof(VRCContactSender),
+                    "m_Active", AnimationCurve.Constant(0, 1, 1)
+                );
 
             clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role).ObjectName}", typeof(GameObject),
                 "m_IsActive",

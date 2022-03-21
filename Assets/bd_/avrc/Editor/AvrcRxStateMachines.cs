@@ -24,6 +24,8 @@ namespace net.fushizen.avrc
 
         private void Setup()
         {
+            CreateGlobalDefaultsLayer();
+
             // Enable the constraint that places our receiver triggers at the correct location
             AddOrReplaceLayer(Names.LayerSetup, ReceiverSetupLayer());
             // Set up a mesh to expand our bounding box locally for the transmitter

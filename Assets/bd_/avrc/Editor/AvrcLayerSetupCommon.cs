@@ -49,6 +49,41 @@ namespace net.fushizen.avrc
             }
         }
 
+        protected void CreateGlobalDefaultsLayer()
+        {
+            var defaultsStateMachine = new AnimatorStateMachine();
+            var state = defaultsStateMachine.AddState("Defaults");
+            state.motion = Animations.Named("AVRC_Defaults",
+                () => Animations.GlobalDefaultsClip()
+            );
+
+            AddOrReplaceLayer("_AVRC_Defaults", defaultsStateMachine, GlobalLayerType.GlobalDefaults);
+
+            int firstAvrcLayerIndex = -1, globalDefaultsIndex = -1;
+            var layers = AnimatorController.layers;
+            for (var i = 0; i < layers.Length; i++)
+            {
+                GlobalLayerType layerType;
+                if (AvrcLayerMarker.IsAvrcLayer(layers[i], out layerType))
+                {
+                    if (firstAvrcLayerIndex == -1) firstAvrcLayerIndex = i;
+                    if (layerType == GlobalLayerType.GlobalDefaults) globalDefaultsIndex = i;
+                }
+            }
+
+            if (firstAvrcLayerIndex < globalDefaultsIndex)
+            {
+                var defaultsLayer = layers[globalDefaultsIndex];
+                Array.Copy(
+                    layers, firstAvrcLayerIndex,
+                    layers, firstAvrcLayerIndex + 1,
+                    globalDefaultsIndex - firstAvrcLayerIndex
+                );
+                layers[firstAvrcLayerIndex] = defaultsLayer;
+                AnimatorController.layers = layers;
+            }
+        }
+
         protected void AddPilotCondition(AnimatorStateTransition t, bool present = true)
         {
             foreach (var pilot in Names.SignalPilots(Binding.role.Other()))
@@ -213,10 +248,17 @@ namespace net.fushizen.avrc
             AnimatorController.layers = newLayers;
         }
 
-        protected void AddOrReplaceLayer(string layerName, AnimatorStateMachine animatorStateMachine)
+        protected void AddOrReplaceLayer(
+            string layerName,
+            AnimatorStateMachine animatorStateMachine,
+            GlobalLayerType globalLayerType = GlobalLayerType.NotGlobalLayer)
         {
             animatorStateMachine.name = layerName;
-            AvrcLayerMarker.MarkLayer(animatorStateMachine, Parameters);
+            AvrcLayerMarker.MarkLayer(
+                animatorStateMachine,
+                globalLayerType == GlobalLayerType.NotGlobalLayer ? Parameters : null,
+                globalLayerType
+            );
 
             bool newLayer = true;
             var layers = AnimatorController.layers;

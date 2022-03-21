@@ -119,16 +119,16 @@ namespace net.fushizen.avrc
             var layers = AvrcAnimatorUtils.FindFxLayer(descriptor)?.layers;
             if (layers == null) return null;
 
-            var setupLayer = layers.Where(l =>
+            var setupStateMachine = layers.Where(l =>
             {
                 return l.stateMachine != null &&
                        (l.stateMachine.behaviours?.OfType<AvrcLayerMarker>()
                             ?.Any(m => m.Parameters == parameters)
                         ?? false);
             }).FirstOrDefault()?.stateMachine;
-            if (setupLayer == null) return null;
+            if (setupStateMachine == null) return null;
 
-            return setupLayer;
+            return setupStateMachine;
         }
 
         internal static void SaveState(VRCAvatarDescriptor descriptor, AvrcBindingConfiguration state)

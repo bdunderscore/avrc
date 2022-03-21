@@ -29,8 +29,9 @@ namespace net.fushizen.avrc
             _pos = new Vector3();
         }
 
-        private void CreateTriggerPair(
+        private ContactBase CreateTriggerPair(
             Signal signal,
+            bool defaultActive = true,
             Role sender = Role.TX
         )
         {
@@ -59,6 +60,10 @@ namespace net.fushizen.avrc
             contact.radius = Diameter * 0.5f;
             contact.position = _pos;
             contact.collisionTags = new List<string>(new[] {signal.TagName});
+
+            contact.enabled = sender != _role || defaultActive;
+
+            return contact;
         }
 
         internal void CreateTriggers(GameObject avatar)
@@ -68,8 +73,8 @@ namespace net.fushizen.avrc
             var rxPilots = _names.SignalPilots(Role.RX);
             var txPilots = _names.SignalPilots(Role.TX);
 
-            CreateTriggerPair(rxPilots[0], Role.RX);
-            CreateTriggerPair(txPilots[0]);
+            CreateTriggerPair(rxPilots[0], false, Role.RX);
+            CreateTriggerPair(txPilots[0], false);
 
             foreach (var param in _parameters.avrcParams)
             {
@@ -79,15 +84,15 @@ namespace net.fushizen.avrc
                 if (param.syncDirection == AvrcParameters.SyncDirection.TwoWay)
                 {
                     var acks = _names.SignalParam(param, true);
-                    foreach (var signal in acks) CreateTriggerPair(signal, Role.RX);
+                    foreach (var signal in acks) CreateTriggerPair(signal, sender: Role.RX);
                 }
             }
 
-            CreateTriggerPair(_names.SignalLocal(Role.RX), Role.RX);
-            CreateTriggerPair(_names.SignalLocal(Role.TX));
+            CreateTriggerPair(_names.SignalLocal(Role.RX), false, Role.RX);
+            CreateTriggerPair(_names.SignalLocal(Role.TX), false);
 
-            CreateTriggerPair(rxPilots[1], Role.RX);
-            CreateTriggerPair(txPilots[1]);
+            CreateTriggerPair(rxPilots[1], false, Role.RX);
+            CreateTriggerPair(txPilots[1], false);
         }
 
         private GameObject BuildConstraintBase(

@@ -11,7 +11,7 @@ namespace net.fushizen.avrc
     public enum GlobalLayerType
     {
         NotGlobalLayer,
-        BoundsSetup
+        GlobalDefaults
     }
 
     public class AvrcLayerMarker : StateMachineBehaviour
@@ -41,10 +41,20 @@ namespace net.fushizen.avrc
             behaviour.Parameters = parameters;
         }
 
+        internal static bool IsAvrcLayer(AnimatorControllerLayer layer, out GlobalLayerType globalLayerType)
+        {
+            globalLayerType = GlobalLayerType.NotGlobalLayer;
+            if (layer.stateMachine == null) return false;
+
+            var behaviour = layer.stateMachine.behaviours?.OfType<AvrcLayerMarker>().FirstOrDefault();
+            if (behaviour != null) globalLayerType = behaviour.GlobalLayerType;
+
+            return behaviour != null;
+        }
+
         internal static bool IsAvrcLayer(AnimatorControllerLayer layer)
         {
-            return layer.stateMachine != null &&
-                   (layer.stateMachine.behaviours?.OfType<AvrcLayerMarker>().Any() ?? false);
+            return IsAvrcLayer(layer, out _);
         }
 
         internal static bool IsMatchingLayer(AnimatorControllerLayer layer, AvrcParameters parameters)
