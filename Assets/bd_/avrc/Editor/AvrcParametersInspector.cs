@@ -63,9 +63,9 @@ namespace net.fushizen.avrc
                 // We do want to avoid making this too large, as it'll increase the effect of rotation on instantaneous
                 // position offset and thus risk falsely detecting a loss of communication.
                 target.baseOffset = new Vector3(
+                    Random.Range(-10, 10),
                     Random.Range(-100, 100),
-                    Random.Range(-100, 100),
-                    Random.Range(-100, 100)
+                    Random.Range(-10, 10)
                 );
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssets();
