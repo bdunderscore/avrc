@@ -253,6 +253,8 @@ namespace net.fushizen.avrc
             AnimatorStateMachine animatorStateMachine,
             GlobalLayerType globalLayerType = GlobalLayerType.NotGlobalLayer)
         {
+            AuditWriteDefaults(animatorStateMachine);
+
             animatorStateMachine.name = layerName;
             AvrcLayerMarker.MarkLayer(
                 animatorStateMachine,
@@ -306,6 +308,20 @@ namespace net.fushizen.avrc
             }
 
             // animatorStateMachine.hideFlags = HideFlags.HideInHierarchy;
+        }
+
+        private void AuditWriteDefaults(AnimatorStateMachine animatorStateMachine)
+        {
+            var queue = new Queue<AnimatorStateMachine>(new[] {animatorStateMachine});
+
+            while (queue.Count > 0)
+            {
+                var nextSM = queue.Dequeue();
+                foreach (var childStateMachine in nextSM.stateMachines) queue.Enqueue(childStateMachine.stateMachine);
+
+                foreach (var state in nextSM.states)
+                    state.state.writeDefaultValues = Binding.writeDefaults == WriteDefaultsState.YesWriteDefaults;
+            }
         }
 
         protected abstract AnimatorStateMachine OneWayParamLayer(

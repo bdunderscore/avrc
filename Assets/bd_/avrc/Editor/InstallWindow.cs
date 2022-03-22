@@ -68,6 +68,18 @@ namespace net.fushizen.avrc
                 }
             }
 
+            var writeDefaultsProp = _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults));
+            var writeDefaults = writeDefaultsProp.enumValueIndex == (int) WriteDefaultsState.YesWriteDefaults;
+            EditorGUI.BeginChangeCheck();
+            writeDefaults = EditorGUILayout.Toggle("Write defaults", writeDefaults);
+            if (EditorGUI.EndChangeCheck())
+            {
+                var newEnumValue = writeDefaults
+                    ? WriteDefaultsState.YesWriteDefaults
+                    : WriteDefaultsState.NoWriteDefaults;
+                _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults)).enumValueIndex = (int) newEnumValue;
+            }
+
             showDetails = EditorGUILayout.Foldout(showDetails, "Advanced settings");
             if (showDetails)
             {
@@ -155,6 +167,10 @@ namespace net.fushizen.avrc
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
             _bindingConfig.parameters = _params;
+            if (_bindingConfig.writeDefaults == WriteDefaultsState.Mixed)
+                // Collapse the wave function
+                _bindingConfig.writeDefaults = WriteDefaultsState.NoWriteDefaults;
+
             if (string.IsNullOrWhiteSpace(_bindingConfig.layerName)) _bindingConfig.layerName = _params.name;
             EditorUtility.SetDirty(_bindingConfig);
 
@@ -197,6 +213,17 @@ namespace net.fushizen.avrc
                 ok = ok && Precheck($"Invalid timeout value {_bindingConfig.timeoutSeconds}",
                     _bindingConfig.timeoutSeconds > 1.0f);
             }
+
+            var avatarWDState = AvrcAnimatorUtils.GetWriteDefaultsState(_targetAvatar);
+            if (avatarWDState == WriteDefaultsState.Mixed)
+                EditorGUILayout.HelpBox(
+                    "Mixed Write Defaults configuration found on your avatar. This may cause problems.",
+                    MessageType.Warning);
+            else if (_bindingConfig.writeDefaults != WriteDefaultsState.Mixed &&
+                     avatarWDState != _bindingConfig.writeDefaults)
+                EditorGUILayout.HelpBox(
+                    "Write Defaults configuration does not match existing animators on your avatar. This may cause problems.",
+                    MessageType.Warning);
 
             return ok;
         }
@@ -343,6 +370,9 @@ namespace net.fushizen.avrc
 
             _cachedNames = new AvrcNames(_params);
             _bindingConfig = AvrcStateSaver.LoadState(_params, _targetAvatar);
+
+            if (_bindingConfig.writeDefaults == WriteDefaultsState.Mixed)
+                _bindingConfig.writeDefaults = AvrcAnimatorUtils.GetWriteDefaultsState(_targetAvatar);
 
             InitBindingList();
         }

@@ -40,6 +40,14 @@ namespace net.fushizen.avrc
     }
 
     [Serializable]
+    public enum WriteDefaultsState
+    {
+        Mixed,
+        YesWriteDefaults,
+        NoWriteDefaults
+    }
+
+    [Serializable]
     [SuppressMessage("ReSharper", "InconsistentNaming")]
     public enum Role
     {
@@ -69,8 +77,8 @@ namespace net.fushizen.avrc
         public Role role = Role.Init;
         public float timeoutSeconds = 5.0f;
         public string layerName;
+        public WriteDefaultsState writeDefaults = WriteDefaultsState.Mixed;
     }
-
 
     [CustomEditor(typeof(AvrcBindingConfiguration))]
     public class AvrcSavedStateEditor : Editor

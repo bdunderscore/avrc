@@ -97,5 +97,46 @@ namespace net.fushizen.avrc
 
             return null;
         }
+
+        public static WriteDefaultsState GetWriteDefaultsState(VRCAvatarDescriptor descriptor)
+        {
+            if (descriptor == null) return WriteDefaultsState.NoWriteDefaults;
+
+            var hasOff = false;
+            var hasOn = false;
+
+            var fx = FindFxLayer(descriptor);
+
+            if (fx == null) return WriteDefaultsState.NoWriteDefaults;
+
+            var toProcess = new Queue<AnimatorStateMachine>();
+
+            foreach (var layer in fx.layers) toProcess.Enqueue(layer.stateMachine);
+
+            while (toProcess.Count > 0)
+            {
+                var next = toProcess.Dequeue();
+
+                foreach (var state in next.states)
+                {
+                    var writeDefaults = state.state.writeDefaultValues;
+                    if (writeDefaults)
+                    {
+                        hasOn = true;
+                    }
+                    else
+                    {
+                        hasOff = true;
+                    }
+                }
+
+                foreach (var subStateMachine in next.stateMachines) toProcess.Enqueue(subStateMachine.stateMachine);
+            }
+
+            if (hasOff && hasOn) return WriteDefaultsState.Mixed;
+            if (hasOff) return WriteDefaultsState.NoWriteDefaults;
+            if (hasOn) return WriteDefaultsState.YesWriteDefaults;
+            return WriteDefaultsState.NoWriteDefaults;
+        }
     }
 }
