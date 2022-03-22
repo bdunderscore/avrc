@@ -6,7 +6,7 @@ using UnityEngine;
 namespace net.fushizen.avrc
 {
     [InitializeOnLoad]
-    public class AvrcAssetProcessorCallbacks : UnityEditor.AssetModificationProcessor
+    internal class AvrcAssetProcessorCallbacks : UnityEditor.AssetModificationProcessor
     {
         private static Dictionary<string, MenuCloner> avrcMenuPaths = new Dictionary<string, MenuCloner>();
         private static HashSet<string> sourceMenuPaths = new HashSet<string>();
@@ -96,7 +96,7 @@ namespace net.fushizen.avrc
         /// Examine the given avrcParams class, and ensure it is in sync with its source menus.
         /// </summary>
         /// <param name="avrcParams"></param>
-        private static void initClones(AvrcParameters avrcParams)
+        internal static void initClones(AvrcParameters avrcParams)
         {
             var path = AssetDatabase.GetAssetPath(avrcParams);
             var cloner = MenuCloner.InitCloner(avrcParams);

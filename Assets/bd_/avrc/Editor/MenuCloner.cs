@@ -12,9 +12,10 @@ namespace net.fushizen.avrc
     /// </summary>
     public class MenuCloner
     {
-        private readonly UnityEngine.Object _containingObject;
+        private readonly Object _containingObject;
         private readonly SerializedProperty _dstProperty;
         private readonly bool _notReady;
+        private readonly HashSet<long> retainedLocalIds = new HashSet<long>();
 
         private Dictionary<string, string> _paramRemapDict;
 
@@ -51,7 +52,7 @@ namespace net.fushizen.avrc
             get { return _dstProperty; }
         }
 
-        internal UnityEngine.Object ContainingObject
+        internal Object ContainingObject
         {
             get { return _containingObject; }
         }
@@ -99,6 +100,11 @@ namespace net.fushizen.avrc
             target.name = src.name;
             enqueuedAssets.Add(target);
             pendingClone.Enqueue(src);
+
+            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(target, out _, out long localId))
+                retainedLocalIds.Add(localId);
+            else
+                Debug.LogError($"Failed to get GUID and local file identifier for {target.name}");
 
             return target;
         }
@@ -249,10 +255,13 @@ namespace net.fushizen.avrc
             var objects = AssetDatabase.LoadAllAssetsAtPath(ContainingPath);
             foreach (var obj in objects)
             {
-                if (obj is VRCExpressionsMenu menu && !enqueuedAssets.Contains(menu))
+                long localId = -1;
+                if (obj is VRCExpressionsMenu menu
+                    && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(menu, out _, out localId)
+                    && !retainedLocalIds.Contains(localId))
                 {
                     AssetDatabase.RemoveObjectFromAsset(menu);
-                    UnityEngine.Object.DestroyImmediate(menu);
+                    Object.DestroyImmediate(menu);
                 }
             }
         }

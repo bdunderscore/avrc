@@ -77,12 +77,22 @@ namespace net.fushizen.avrc
             var srcMenu = srcMenuProp.objectReferenceValue;
             EditorGUILayout.PropertyField(srcMenuProp, L.AP_SRC_MENU);
 
-            if (srcMenu != srcMenuProp.objectReferenceValue && srcMenuProp.objectReferenceValue == null)
+            if (srcMenu != srcMenuProp.objectReferenceValue)
             {
                 // Clear the destination menu property so we'll clean up the cloned assets.
-                // MenuCloner will be run when this asset is saved to do the cleanup process.
                 var destMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
                 destMenuProp.objectReferenceValue = null;
+
+                // Force a clone and save ASAP. This avoids issues where the user immediately copies out the menu asset
+                // before we run the on-save logic.
+                EditorApplication.delayCall += () =>
+                {
+                    if (target != null)
+                    {
+                        AvrcAssetProcessorCallbacks.initClones(target);
+                        AssetDatabase.SaveAssets();
+                    }
+                };
             }
             /*if (GUILayout.Button("Sync menus"))
             {
