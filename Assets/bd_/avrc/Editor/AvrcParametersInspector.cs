@@ -12,16 +12,24 @@ namespace net.fushizen.avrc
     [CustomEditor(typeof(AvrcParameters))]
     public class AvrcParametersInspector : Editor
     {
+        private SerializedProperty _baseOffsetProp;
+        private SerializedProperty _embeddedMenuProp;
+        private SerializedProperty _guidProp;
         private AvrcParametersGenerator _paramsGen;
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
+        private SerializedProperty _srcMenuProp;
 
         private Localizations L => Localizations.Inst;
 
         [SuppressMessage("ReSharper", "HeapView.DelegateAllocation")]
         private void OnEnable()
         {
-            _paramsProp = serializedObject.FindProperty("avrcParams");
+            _paramsProp = serializedObject.FindProperty(nameof(AvrcParameters.avrcParams));
+            _guidProp = serializedObject.FindProperty(nameof(AvrcParameters.guid));
+            _baseOffsetProp = serializedObject.FindProperty(nameof(AvrcParameters.baseOffset));
+            _srcMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu));
+            _embeddedMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
 
             _paramsList = new ReorderableList(serializedObject, _paramsProp, true, true, true, true)
             {
@@ -35,25 +43,21 @@ namespace net.fushizen.avrc
 
         public override void OnInspectorGUI()
         {
-            // ReSharper disable once LocalVariableHidesMember
-            AvrcParameters target = this.target as AvrcParameters;
-
-            if (target.guid.Empty())
+            if (string.IsNullOrWhiteSpace(_guidProp.stringValue))
             {
-                target.guid = GUID.Generate();
-                EditorUtility.SetDirty(target);
+                _guidProp.stringValue = GUID.Generate().ToString();
             }
 
             Localizations.SwitchLanguageButton();
 
             if (GUILayout.Button(L.AP_INSTALL))
             {
-                InstallWindow.DisplayWindow(target);
+                InstallWindow.DisplayWindow(target as AvrcParameters);
             }
 
             Debug.Assert(target != null, nameof(target) + " != null");
 
-            if (target.baseOffset.sqrMagnitude < 1)
+            if (_baseOffsetProp.vector3Value.sqrMagnitude < 1)
             {
                 // We primarily rely on the contact tags to avoid interference, but we also set a position offset both
                 // to avoid too many debug displays at the origin, and to reduce the number of collision tag tests that
@@ -62,7 +66,7 @@ namespace net.fushizen.avrc
                 //
                 // We do want to avoid making this too large, as it'll increase the effect of rotation on instantaneous
                 // position offset and thus risk falsely detecting a loss of communication.
-                target.baseOffset = new Vector3(
+                _baseOffsetProp.vector3Value = new Vector3(
                     Random.Range(-10, 10),
                     Random.Range(-100, 100),
                     Random.Range(-10, 10)
@@ -71,28 +75,37 @@ namespace net.fushizen.avrc
                 AssetDatabase.SaveAssets();
             }
 
-            serializedObject.Update();
-
-            var srcMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu));
-            var srcMenu = srcMenuProp.objectReferenceValue;
-            EditorGUILayout.PropertyField(srcMenuProp, L.AP_SRC_MENU);
-
-            if (srcMenu != srcMenuProp.objectReferenceValue)
+            var srcMenu = _srcMenuProp.objectReferenceValue;
+            if (srcMenu == null && _embeddedMenuProp.objectReferenceValue != null)
             {
-                // Clear the destination menu property so we'll clean up the cloned assets.
-                var destMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
-                destMenuProp.objectReferenceValue = null;
-
-                // Force a clone and save ASAP. This avoids issues where the user immediately copies out the menu asset
-                // before we run the on-save logic.
-                EditorApplication.delayCall += () =>
+                using (new EditorGUI.DisabledScope(true))
                 {
-                    if (target != null)
+                    EditorGUILayout.PropertyField(_embeddedMenuProp, L.AP_SRC_MENU);
+                }
+            }
+            else
+            {
+                EditorGUILayout.PropertyField(_srcMenuProp, L.AP_SRC_MENU);
+
+                if (srcMenu != _srcMenuProp.objectReferenceValue &&
+                    (srcMenu != null || _srcMenuProp.objectReferenceValue != null))
+                {
+                    // Clear the destination menu property so we'll clean up the cloned assets.
+                    var destMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
+                    destMenuProp.objectReferenceValue = null;
+
+                    // Force a clone and save ASAP. This avoids issues where the user immediately copies out the menu asset
+                    // before we run the on-save logic.
+                    EditorApplication.delayCall += () =>
                     {
-                        AvrcAssetProcessorCallbacks.initClones(target);
-                        AssetDatabase.SaveAssets();
-                    }
-                };
+                        if (target != null)
+                        {
+                            serializedObject.ApplyModifiedProperties();
+                            AvrcAssetProcessorCallbacks.initClones(target as AvrcParameters);
+                            AssetDatabase.SaveAssets();
+                        }
+                    };
+                }
             }
             /*if (GUILayout.Button("Sync menus"))
             {
@@ -108,6 +121,8 @@ namespace net.fushizen.avrc
             serializedObject.ApplyModifiedProperties();
 
             _paramsGen.GenerateParametersUI();
+
+            serializedObject.UpdateIfRequiredOrScript();
         }
 
         private float OnElementHeight(int index)
