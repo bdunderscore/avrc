@@ -189,6 +189,7 @@ namespace net.fushizen.avrc
             else
             {
                 AvrcTxStateMachines.SetupTx(_targetAvatar, _bindingConfig);
+                InstallMenu();
             }
 
             AvrcStateSaver.SaveState(_targetAvatar, _bindingConfig);
