@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using UnityEditor;
 
 namespace net.fushizen.avrc
 {
@@ -22,7 +21,7 @@ namespace net.fushizen.avrc
     internal class AvrcNames
     {
         internal readonly Dictionary<string, string> ParameterMap;
-        internal readonly GUID ParamsGUID;
+        internal readonly string ParamsGUID;
 
         internal readonly string Prefix;
 

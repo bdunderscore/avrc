@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using UnityEditor;
 using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
@@ -27,7 +26,7 @@ namespace net.fushizen.avrc
 
         public List<AvrcParameter> avrcParams;
         public Vector3 baseOffset;
-        public GUID guid;
+        public string guid;
 
         /// <summary>
         /// Reference to an expressions menu asset that will be cloned into this AvrcParameters asset.
