@@ -286,7 +286,96 @@ namespace net.fushizen.avrc
                 });
             }
 
+            AddParameters(rootTargetMenu);
+
             EditorUtility.SetDirty(_installMenu);
+        }
+
+        private void AddParameters(VRCExpressionsMenu rootTargetMenu)
+        {
+            var paramToType =
+                new Dictionary<string, AvrcParameters.AvrcParameterType>();
+            foreach (var param in _params.avrcParams)
+                if (_cachedNames.ParameterMap.ContainsKey(param.name))
+                {
+                    var mapped = _cachedNames.ParameterMap[param.name];
+
+                    paramToType[mapped] = param.type;
+                }
+
+            var pendingMenus = new Queue<VRCExpressionsMenu>();
+            var seen = new HashSet<long>();
+            var menuParams = new HashSet<string>();
+
+            long localId;
+            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(rootTargetMenu, out _, out localId);
+            seen.Add(localId);
+            pendingMenus.Enqueue(rootTargetMenu);
+
+            while (pendingMenus.Count > 0)
+            {
+                var menu = pendingMenus.Dequeue();
+
+                var filteredControls = new List<VRCExpressionsMenu.Control>();
+
+                foreach (var elem in menu.controls)
+                {
+                    if (!paramToType.ContainsKey(elem.parameter.name))
+                    {
+                        if (elem.type != VRCExpressionsMenu.Control.ControlType.SubMenu) continue;
+                        elem.parameter.name = "";
+                    }
+
+                    // Subparameters are currently unsupported
+                    elem.subParameters = Array.Empty<VRCExpressionsMenu.Control.Parameter>();
+
+                    switch (elem.type)
+                    {
+                        case VRCExpressionsMenu.Control.ControlType.Toggle:
+                        case VRCExpressionsMenu.Control.ControlType.Button:
+                            menuParams.Add(elem.parameter.name);
+                            break;
+                        case VRCExpressionsMenu.Control.ControlType.SubMenu:
+                            menuParams.Add(elem.parameter.name);
+                            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(elem.subMenu, out _, out localId);
+                            if (!seen.Contains(localId))
+                            {
+                                seen.Add(localId);
+                                pendingMenus.Enqueue(elem.subMenu);
+                            }
+
+                            break;
+                        default:
+                            continue;
+                    }
+
+                    filteredControls.Add(elem);
+                }
+
+                menu.controls = filteredControls;
+            }
+
+            var expParams = new List<VRCExpressionParameters.Parameter>(_targetAvatar.expressionParameters.parameters);
+            var expParamsAlreadyPresent = new HashSet<string>(expParams.Select(p => p.name));
+
+            foreach (var mappedParam in menuParams)
+            {
+                if (!paramToType.ContainsKey(mappedParam) || expParamsAlreadyPresent.Contains(mappedParam)) continue;
+
+                expParams.Add(new VRCExpressionParameters.Parameter
+                {
+                    name = mappedParam,
+                    defaultValue = 0,
+                    saved = false,
+                    valueType = paramToType[mappedParam] == AvrcParameters.AvrcParameterType.Bool
+                        ? VRCExpressionParameters.ValueType.Bool
+                        : VRCExpressionParameters.ValueType.Int
+                });
+                expParamsAlreadyPresent.Add(mappedParam);
+            }
+
+            _targetAvatar.expressionParameters.parameters = expParams.ToArray();
+            EditorUtility.SetDirty(_targetAvatar.expressionParameters);
         }
 
         #region Remap panel
