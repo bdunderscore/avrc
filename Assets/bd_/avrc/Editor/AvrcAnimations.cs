@@ -100,7 +100,7 @@ namespace net.fushizen.avrc
 
             foreach (var pilotSignal in _names.SignalPilots(role))
                 clip.SetCurve($"{_names.ObjectPath}/{pilotSignal.ObjectName}", typeof(VRCContactSender),
-                    "m_Active", AnimationCurve.Constant(0, 1, 1)
+                    "m_Enabled", AnimationCurve.Constant(0, 1, 1)
                 );
 
             clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role).ObjectName}", typeof(GameObject),
