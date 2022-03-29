@@ -79,9 +79,10 @@ namespace net.fushizen.avrc
                         {
                             _parameters.avrcParams.Add(avrcParameter);
                         }
-                    }
 
-                    EditorUtility.SetDirty(_parameters);
+                        EditorUtility.SetDirty(_parameters);
+                        AssetDatabase.SaveAssets();
+                    }
                 }
             }
         }
