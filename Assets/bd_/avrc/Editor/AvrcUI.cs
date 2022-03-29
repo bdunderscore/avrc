@@ -40,6 +40,9 @@ namespace net.fushizen.avrc
 
             Vector2 size = style.CalcSize(content);
             var r = AdvanceRect(ref rect, size.x, padBefore, padAfter);
+
+            r.y -= (r.height - size.y) / 2 - 1;
+
             GUI.Label(r, content, style);
         }
 

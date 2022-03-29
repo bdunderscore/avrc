@@ -18,6 +18,7 @@ namespace net.fushizen.avrc
         public string forwardParameter;
         public int defaultValue;
         public NoSignalMode noSignalMode;
+        public bool isSecret;
     }
 
     [Serializable]

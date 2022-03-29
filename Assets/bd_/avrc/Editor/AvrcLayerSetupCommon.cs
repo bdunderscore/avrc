@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -20,7 +21,10 @@ namespace net.fushizen.avrc
         protected readonly AvrcBindingConfiguration Binding;
         protected readonly AvrcNames Names;
         protected readonly AvrcObjects Objects;
+        private readonly ImmutableDictionary<string, ParameterMapping> parameterBindings;
         protected readonly AvrcParameters Parameters;
+
+        private readonly ImmutableHashSet<string> syncedParameters;
         protected readonly float Timeout;
 
         protected AvrcLayerSetupCommon(VRCAvatarDescriptor avatarDescriptor, AvrcBindingConfiguration binding)
@@ -47,6 +51,22 @@ namespace net.fushizen.avrc
             {
                 throw new ArgumentException("FX layer is required");
             }
+
+            syncedParameters = avatarDescriptor.expressionParameters.parameters.Select(p => p.name)
+                .ToImmutableHashSet();
+            parameterBindings = Binding.parameterMappings.Select(m =>
+                new KeyValuePair<string, ParameterMapping>(m.avrcParameterName, m)
+            ).ToImmutableDictionary();
+        }
+
+        protected ParameterMapping GetParamBinding(AvrcParameters.AvrcParameter parameter)
+        {
+            return parameterBindings[parameter.name];
+        }
+
+        protected bool HasSyncedParameter(string name)
+        {
+            return syncedParameters.Contains(name);
         }
 
         protected void CreateGlobalDefaultsLayer()

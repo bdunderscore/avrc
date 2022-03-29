@@ -103,8 +103,8 @@ namespace net.fushizen.avrc
                     "m_Enabled", AnimationCurve.Constant(0, 1, 1)
                 );
 
-            clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role).ObjectName}", typeof(GameObject),
-                "m_IsActive",
+            clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role).ObjectName}", typeof(VRCContactSender),
+                "m_Enabled",
                 AnimationCurve.Constant(0, 1, local == LocalState.OwnerLocal ? 1.0f : 0.0f));
 
             // TODO: Control parameter contact activation?

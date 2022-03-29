@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEditor;
@@ -225,6 +226,27 @@ namespace net.fushizen.avrc
                 EditorGUILayout.HelpBox(
                     "Write Defaults configuration does not match existing animators on your avatar. This may cause problems.",
                     MessageType.Warning);
+
+            if (_targetAvatar != null && _cachedNames != null)
+            {
+                if (_targetAvatar.expressionParameters == null)
+                {
+                    Precheck("No expression parameters found on avatar", false);
+                    return false;
+                }
+
+                var syncedParams = _targetAvatar.expressionParameters.parameters.Select(p => p.name)
+                    .ToImmutableHashSet();
+
+                foreach (var param in _bindingConfig.parameterMappings)
+                    if (param.isSecret)
+                    {
+                        var paramName = _cachedNames.ParameterMap[param.avrcParameterName];
+                        if (param.remappedParameterName != null) paramName = param.remappedParameterName;
+                        if (syncedParams.Contains(paramName))
+                            ok = Precheck($"Parameter [{paramName}] should not be synced, as it is secret.", false);
+                    }
+            }
 
             return ok;
         }
@@ -542,6 +564,8 @@ namespace net.fushizen.avrc
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 80, padAfter: 10), noSignalModeProp,
                     GUIContent.none);
 
+                var container = AvrcUI.AdvanceRect(ref rect, 120, padAfter: 10);
+
                 switch ((NoSignalMode) noSignalModeProp.enumValueIndex)
                 {
                     case NoSignalMode.Hold:
@@ -550,7 +574,8 @@ namespace net.fushizen.avrc
                     {
                         var defaultValProp = element.FindPropertyRelative(nameof(ParameterMapping.defaultValue));
                         // TODO: Check property type
-                        defaultValProp.intValue = EditorGUI.IntField(AvrcUI.AdvanceRect(ref rect, 40), GUIContent.none,
+                        defaultValProp.intValue = EditorGUI.IntField(AvrcUI.AdvanceRect(ref container, 40),
+                            GUIContent.none,
                             defaultValProp.intValue);
                         break;
                     }
@@ -558,11 +583,18 @@ namespace net.fushizen.avrc
                     {
                         var forwardProp = element.FindPropertyRelative(nameof(ParameterMapping.forwardParameter));
                         // TODO: Select from known properties
-                        forwardProp.stringValue = EditorGUI.TextField(AvrcUI.AdvanceRect(ref rect, 120, padAfter: 10),
-                            GUIContent.none, forwardProp.stringValue);
+                        forwardProp.stringValue =
+                            EditorGUI.TextField(container, GUIContent.none, forwardProp.stringValue);
                         break;
                     }
                 }
+
+                var secretProp = element.FindPropertyRelative(nameof(ParameterMapping.isSecret));
+                secretProp.boolValue = EditorGUI.Toggle(
+                    AvrcUI.AdvanceRect(ref rect, EditorGUIUtility.singleLineHeight),
+                    GUIContent.none, secretProp.boolValue
+                );
+                AvrcUI.RenderLabel(ref rect, "Secret mode");
             }
         }
 
@@ -584,11 +616,6 @@ namespace net.fushizen.avrc
                 labelWidth = Mathf.Max(labelWidth,
                     new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcParameterName)).x);
             }
-
-            EditorGUILayout.HelpBox(
-                "In this section you can adjust the name of the remote-controlled parameters as they are applied to your avatar.\n" +
-                "This is recommended for transmitters to avoid clashing with controls for your own avatar.\n",
-                MessageType.Info);
 
             EditorGUI.BeginChangeCheck();
 

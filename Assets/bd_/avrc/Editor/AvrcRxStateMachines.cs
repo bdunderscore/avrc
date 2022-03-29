@@ -74,14 +74,16 @@ namespace net.fushizen.avrc
             DriveParameter driveParameter
         )
         {
+            var binding = GetParamBinding(parameter);
+            var presenceSignal = binding.isSecret ? Names.PubParamEitherLocal : Names.PubParamPeerPresent;
+            var driverIsLocal = HasSyncedParameter(Names.ParameterMap[parameter.name]);
+
             var stateMachine = new AnimatorStateMachine();
 
             var localDriven = new AnimatorState[values];
             var remoteDriven = new AnimatorState[localDriven.Length];
 
             var localDrivenUnstable = new AnimatorState[values];
-
-            var perState = 1.0f / (localDriven.Length + 1);
 
             var conditionParamName = Names.InternalParameter(parameter);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
@@ -97,7 +99,7 @@ namespace net.fushizen.avrc
                 state =>
                 {
                     var t = AddInstantTransition(state, startup);
-                    t.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
+                    t.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
                 },
                 t => { t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamPeerPresent); }
             );
@@ -111,16 +113,16 @@ namespace net.fushizen.avrc
             }.ToArray();
 
             var transition = AddInstantTransition(startup, idleState);
-            transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamPeerPresent);
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
 
             var drivenByTx = stateMachine.AddState("DrivenByTx", pos(2, 0));
             drivenByTx.motion = AvrcAssets.EmptyClip();
 
+            transition = AddInstantTransition(drivenByTx, startup);
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
+
             for (var i = 0; i < localDriven.Length; i++)
             {
-                var hi = (i + 1.5f) * perState;
-                var lo = (i + 0.5f) * perState;
-
                 localDriven[i] = stateMachine.AddState($"LD_{parameter.name}_{i}",
                     pos(1, i - localDriven.Length / 2.0f));
                 localDrivenUnstable[i] = stateMachine.AddState($"LU_{parameter.name}_{i}",
@@ -128,7 +130,7 @@ namespace net.fushizen.avrc
                 remoteDriven[i] = stateMachine.AddState($"RD_{parameter.name}_{i}",
                     pos(3, i + 0.5f - localDriven.Length / 2.0f));
 
-                var driver = ParameterDriver();
+                var driver = ParameterDriver(driverIsLocal);
                 remoteDriven[i].behaviours = new StateMachineBehaviour[] {driver};
                 driveParameter(driver, i);
 
@@ -150,7 +152,7 @@ namespace net.fushizen.avrc
                 // Transition from start state based on local state
                 transition = AddInstantTransition(startup, localDriven[i]);
                 equalsCondition(transition, i);
-                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
+                transition.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
 
                 // Transition back to start state on local change (if not two-way)
                 transition = AddInstantTransition(localDriven[i], startup);
@@ -161,7 +163,10 @@ namespace net.fushizen.avrc
                 {
                     var t = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
                     AddPilotCondition(t);
-                    AddIsLocalCondition(t);
+                    if (driverIsLocal)
+                        AddIsLocalCondition(t);
+                    else
+                        t.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
                     return t;
                 });
 
@@ -187,13 +192,13 @@ namespace net.fushizen.avrc
 
                 // And back to local driven once we update the parameter. This needs to be an always-true transition.
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);
-                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
+                transition.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);
-                transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamPeerPresent);
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
 
                 // Deactivation transition
                 transition = AddInstantTransition(localDriven[i], startup);
-                transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamPeerPresent);
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
             }
 
             return stateMachine;
