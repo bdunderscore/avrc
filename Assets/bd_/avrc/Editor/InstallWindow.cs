@@ -34,6 +34,8 @@ namespace net.fushizen.avrc
 
         private void OnGUI()
         {
+            if (_bindingConfigSO == null || _bindingConfig == null) InitSavedState();
+
             scrollPos = GUILayout.BeginScrollView(scrollPos);
             Localizations.SwitchLanguageButton();
 
