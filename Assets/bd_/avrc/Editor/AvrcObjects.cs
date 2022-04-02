@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -59,7 +58,7 @@ namespace net.fushizen.avrc
             contact.shapeType = ContactBase.ShapeType.Sphere;
             contact.radius = Diameter * 0.5f;
             contact.position = _pos;
-            contact.collisionTags = new List<string>(new[] {signal.TagName});
+            contact.collisionTags = AvrcLicenseManager.MungeContactTag(signal.TagName, sender == _role);
 
             contact.enabled = sender != _role || defaultActive;
 
