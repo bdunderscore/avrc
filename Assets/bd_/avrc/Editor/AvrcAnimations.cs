@@ -22,30 +22,6 @@ namespace net.fushizen.avrc
             var clip = d();
             clip.name = name;
             return clip;
-            /*
-            string assetPath = AvrcAssets.GetGeneratedAssetsFolder() + "/" + name + ".anim";
-            var clip = d();
-            
-            AssetDatabase.CreateAsset(clip, assetPath);
-
-            return clip;
-            */
-        }
-
-        internal AnimationClip LinearClip(string path, Vector3 baseOffset)
-        {
-            AnimationClip clip = new AnimationClip();
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x",
-                AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y",
-                AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
-                AnimationCurve.Linear(
-                    0, AvrcObjects.Diameter * 1,
-                    1, AvrcObjects.Diameter * 0.5f
-                ));
-
-            return clip;
         }
 
         internal AnimationClip GlobalDefaultsClip()
@@ -60,20 +36,6 @@ namespace net.fushizen.avrc
             clip.SetCurve("AVRC/AVRC_Bounds", typeof(Transform), "m_LocalScale.z",
                 AnimationCurve.Constant(0, 1, 0.01f)
             );
-
-            return clip;
-        }
-
-        internal AnimationClip ConstantClip(string path, Vector3 baseOffset, float value)
-        {
-            AnimationClip clip = new AnimationClip();
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.x",
-                AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.y",
-                AnimationCurve.Constant(0, 1, 0));
-            clip.SetCurve(path, typeof(Transform), "m_LocalPosition.z",
-                AnimationCurve.Constant(0, 1,
-                    AvrcObjects.Diameter * Mathf.LerpUnclamped(1, 0.5f, value)));
 
             return clip;
         }

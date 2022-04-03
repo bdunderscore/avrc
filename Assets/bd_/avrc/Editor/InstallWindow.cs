@@ -412,6 +412,7 @@ namespace net.fushizen.avrc
         private SerializedObject _bindingConfigSO;
         private SerializedProperty _remapProp;
         private string duplicateName = null;
+        private Dictionary<string, AvrcSignal> _signalMap;
 
         private AvrcNames SyncNames()
         {
@@ -485,6 +486,8 @@ namespace net.fushizen.avrc
             }
 
             _cachedNames = new AvrcNames(_params);
+            _signalMap = new Dictionary<string, AvrcSignal>();
+            foreach (var sig in _params.signals) _signalMap[sig.name] = sig;
             _bindingConfig = AvrcStateSaver.LoadState(_params, _targetAvatar);
 
             if (_bindingConfig.writeDefaults == WriteDefaultsState.Mixed)
@@ -594,11 +597,20 @@ namespace net.fushizen.avrc
                 }
 
                 var secretProp = element.FindPropertyRelative(nameof(SignalMapping.isSecret));
-                secretProp.boolValue = EditorGUI.Toggle(
-                    AvrcUI.AdvanceRect(ref rect, EditorGUIUtility.singleLineHeight),
-                    GUIContent.none, secretProp.boolValue
-                );
-                AvrcUI.RenderLabel(ref rect, L.INST_SECRET_MODE);
+                var signalName = element.FindPropertyRelative(nameof(SignalMapping.avrcSignalName)).stringValue;
+                if (_signalMap[signalName].syncDirection == SyncDirection.OneWay)
+                {
+                    secretProp.boolValue = EditorGUI.Toggle(
+                        AvrcUI.AdvanceRect(ref rect, EditorGUIUtility.singleLineHeight),
+                        GUIContent.none, secretProp.boolValue
+                    );
+                    AvrcUI.RenderLabel(ref rect, L.INST_SECRET_MODE);
+                }
+                else if (secretProp.boolValue)
+                {
+                    // TODO - show label?
+                    secretProp.boolValue = false;
+                }
             }
         }
 
