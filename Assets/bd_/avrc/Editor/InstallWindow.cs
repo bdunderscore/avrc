@@ -55,8 +55,8 @@ namespace net.fushizen.avrc
 
             // ReSharper disable once HeapView.BoxingAllocation
             var roleProp = _bindingConfigSO.FindProperty(nameof(_bindingConfig.role));
-            roleProp.enumValueIndex = EditorGUILayout.Popup("Role", (int) roleProp.enumValueIndex,
-                new string[] {"", "TX", "RX"}
+            roleProp.enumValueIndex = EditorGUILayout.Popup(L.INST_ROLE, roleProp.enumValueIndex,
+                L.PROP_ROLE_NAMES
             );
 
             if (roleProp.enumValueIndex != (int) Role.RX)
@@ -74,7 +74,7 @@ namespace net.fushizen.avrc
             var writeDefaultsProp = _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults));
             var writeDefaults = writeDefaultsProp.enumValueIndex == (int) WriteDefaultsState.YesWriteDefaults;
             EditorGUI.BeginChangeCheck();
-            writeDefaults = EditorGUILayout.Toggle("Write defaults", writeDefaults);
+            writeDefaults = EditorGUILayout.Toggle(L.INST_WRITE_DEFAULTS, writeDefaults);
             if (EditorGUI.EndChangeCheck())
             {
                 var newEnumValue = writeDefaults
@@ -83,7 +83,7 @@ namespace net.fushizen.avrc
                 _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults)).enumValueIndex = (int) newEnumValue;
             }
 
-            showDetails = EditorGUILayout.Foldout(showDetails, "Advanced settings");
+            showDetails = EditorGUILayout.Foldout(showDetails, L.INST_ADV_SETTINGS);
             if (showDetails)
             {
                 using (new EditorGUI.DisabledGroupScope(_bindingConfig == null))
@@ -91,32 +91,32 @@ namespace net.fushizen.avrc
                     if (_bindingConfig == null)
                     {
                         // placeholder
-                        EditorGUILayout.TextField("Timeout (seconds)", "");
-                        EditorGUILayout.TextField("Layer name", "");
+                        EditorGUILayout.TextField(L.INST_TIMEOUT, "");
+                        EditorGUILayout.TextField(L.INST_LAYER_NAME, "");
                     }
                     else
                     {
                         var timeoutProp = _bindingConfigSO.FindProperty(nameof(_bindingConfig.timeoutSeconds));
                         EditorGUILayout.PropertyField(
                             timeoutProp,
-                            new GUIContent("Timeout (seconds)")
+                            L.INST_TIMEOUT
                         );
                         if (timeoutProp.floatValue < 1.0f) timeoutProp.floatValue = 1.0f;
                         EditorGUILayout.PropertyField(
                             _bindingConfigSO.FindProperty(nameof(_bindingConfig.layerName)),
-                            new GUIContent("Layer name")
+                            L.INST_LAYER_NAME
                         );
                     }
                 }
             }
 
-            DrawRemapPanel();
+            DrawBindingPanel();
 
             var prechecks = IsReadyToInstall();
 
             using (new EditorGUI.DisabledGroupScope(!prechecks))
             {
-                if (GUILayout.Button("Install"))
+                if (GUILayout.Button(L.INST_INSTALL))
                 {
                     DoInstall();
                 }
@@ -206,34 +206,36 @@ namespace net.fushizen.avrc
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
 
-            ok = ok && Precheck("Role is not set", _bindingConfig.role != Role.Init);
+            if (AvrcLicenseManager.GetLicenseState() != LicenseState.Ok)
+                EditorGUILayout.HelpBox(L.INST_UNLICENSED, MessageType.Warning);
+            ok = ok && Precheck(L.INST_ERR_NO_ROLE, _bindingConfig.role != Role.Init);
             ok = ok && Precheck(L.INST_ERR_NO_PARAMS, _params != null);
-            ok = ok && Precheck(L.INST_NO_AVATAR, _targetAvatar != null);
-            ok = ok && Precheck(L.INST_NO_FX, AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
+            ok = ok && Precheck(L.INST_ERR_NO_AVATAR, _targetAvatar != null);
+            ok = ok && Precheck(L.INST_ERR_NO_FX, AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
             ok = ok && Precheck(L.INST_MENU_FULL, !IsTargetMenuFull());
-            ok = ok && Precheck($"Duplicate parameter name [{duplicateName}]", duplicateName == null);
+            ok = ok && Precheck(string.Format(L.INST_ERR_DUP_PARAM, duplicateName), duplicateName == null);
             if (_bindingConfig.role == Role.RX)
             {
-                ok = ok && Precheck($"Invalid timeout value {_bindingConfig.timeoutSeconds}",
+                ok = ok && Precheck(string.Format(L.INST_ERR_BAD_TIMEOUT, _bindingConfig.timeoutSeconds),
                     _bindingConfig.timeoutSeconds > 1.0f);
             }
 
             var avatarWDState = AvrcAnimatorUtils.GetWriteDefaultsState(_targetAvatar);
             if (avatarWDState == WriteDefaultsState.Mixed)
                 EditorGUILayout.HelpBox(
-                    "Mixed Write Defaults configuration found on your avatar. This may cause problems.",
+                    L.INST_ERR_MIXED_WRITE_DEFAULTS,
                     MessageType.Warning);
             else if (_bindingConfig.writeDefaults != WriteDefaultsState.Mixed &&
                      avatarWDState != _bindingConfig.writeDefaults)
                 EditorGUILayout.HelpBox(
-                    "Write Defaults configuration does not match existing animators on your avatar. This may cause problems.",
+                    L.INST_ERR_WD_MISMATCH,
                     MessageType.Warning);
 
             if (_targetAvatar != null && _cachedNames != null)
             {
                 if (_targetAvatar.expressionParameters == null)
                 {
-                    Precheck("No expression parameters found on avatar", false);
+                    Precheck(L.INST_ERR_NO_EXP_PARAMS, false);
                     return false;
                 }
 
@@ -246,7 +248,7 @@ namespace net.fushizen.avrc
                         var paramName = _cachedNames.SignalMap[param.avrcSignalName];
                         if (param.remappedParameterName != null) paramName = param.remappedParameterName;
                         if (syncedParams.Contains(paramName))
-                            ok = Precheck($"Parameter [{paramName}] should not be synced, as it is secret.", false);
+                            ok = Precheck(string.Format(L.INST_ERR_SYNCED_SECRET_PARAM, paramName), false);
                     }
             }
 
@@ -596,11 +598,11 @@ namespace net.fushizen.avrc
                     AvrcUI.AdvanceRect(ref rect, EditorGUIUtility.singleLineHeight),
                     GUIContent.none, secretProp.boolValue
                 );
-                AvrcUI.RenderLabel(ref rect, "Secret mode");
+                AvrcUI.RenderLabel(ref rect, L.INST_SECRET_MODE);
             }
         }
 
-        void DrawRemapPanel()
+        private void DrawBindingPanel()
         {
             if (_remapList == null) return;
 
@@ -608,7 +610,7 @@ namespace net.fushizen.avrc
             SyncNames();
 
             EditorGUILayout.Separator();
-            EditorGUILayout.LabelField("Remap parameter names");
+            EditorGUILayout.LabelField(L.INST_SIGNAL_SETTINGS);
 
             // Compute label width
             labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;
