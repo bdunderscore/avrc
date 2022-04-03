@@ -52,7 +52,6 @@ namespace net.fushizen.avrc
                 contact = receiver;
                 receiver.parameter = signal.ParamName;
                 receiver.receiverType = ContactReceiver.ReceiverType.Constant;
-                receiver.value = 1.0f;
             }
 
             contact.shapeType = ContactBase.ShapeType.Sphere;
