@@ -22,7 +22,7 @@ namespace net.fushizen.avrc
         protected readonly AvrcLinkSpec LinkSpec;
         protected readonly AvrcNames Names;
         protected readonly AvrcObjects Objects;
-        private readonly ImmutableDictionary<string, ParameterMapping> parameterBindings;
+        private readonly ImmutableDictionary<string, SignalMapping> parameterBindings;
 
         private readonly ImmutableHashSet<string> syncedParameters;
         protected readonly float Timeout;
@@ -54,12 +54,12 @@ namespace net.fushizen.avrc
 
             syncedParameters = avatarDescriptor.expressionParameters.parameters.Select(p => p.name)
                 .ToImmutableHashSet();
-            parameterBindings = Binding.parameterMappings.Select(m =>
-                new KeyValuePair<string, ParameterMapping>(m.avrcParameterName, m)
+            parameterBindings = Binding.signalMappings.Select(m =>
+                new KeyValuePair<string, SignalMapping>(m.avrcSignalName, m)
             ).ToImmutableDictionary();
         }
 
-        protected ParameterMapping GetParamBinding(AvrcSignal signal)
+        protected SignalMapping GetParamBinding(AvrcSignal signal)
         {
             return parameterBindings[signal.name];
         }

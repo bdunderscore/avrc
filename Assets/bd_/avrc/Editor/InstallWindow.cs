@@ -240,10 +240,10 @@ namespace net.fushizen.avrc
                 var syncedParams = _targetAvatar.expressionParameters.parameters.Select(p => p.name)
                     .ToImmutableHashSet();
 
-                foreach (var param in _bindingConfig.parameterMappings)
+                foreach (var param in _bindingConfig.signalMappings)
                     if (param.isSecret)
                     {
-                        var paramName = _cachedNames.SignalMap[param.avrcParameterName];
+                        var paramName = _cachedNames.SignalMap[param.avrcSignalName];
                         if (param.remappedParameterName != null) paramName = param.remappedParameterName;
                         if (syncedParams.Contains(paramName))
                             ok = Precheck($"Parameter [{paramName}] should not be synced, as it is secret.", false);
@@ -431,13 +431,13 @@ namespace net.fushizen.avrc
                 specParams.Add(specParam.name);
             }
 
-            var initialParamCount = _bindingConfig.parameterMappings.Count;
-            _bindingConfig.parameterMappings = _bindingConfig.parameterMappings
-                .Where(p => specParams.Contains(p.avrcParameterName)).ToList();
-            if (initialParamCount != _bindingConfig.parameterMappings.Count) madeChanges = true;
-            foreach (var alreadyMapped in _bindingConfig.parameterMappings)
+            var initialParamCount = _bindingConfig.signalMappings.Count;
+            _bindingConfig.signalMappings = _bindingConfig.signalMappings
+                .Where(p => specParams.Contains(p.avrcSignalName)).ToList();
+            if (initialParamCount != _bindingConfig.signalMappings.Count) madeChanges = true;
+            foreach (var alreadyMapped in _bindingConfig.signalMappings)
             {
-                specParams.Remove(alreadyMapped.avrcParameterName);
+                specParams.Remove(alreadyMapped.avrcSignalName);
 
                 var mappedName = DefaultNameMapping(alreadyMapped);
                 if (!String.IsNullOrWhiteSpace(alreadyMapped.remappedParameterName))
@@ -453,16 +453,16 @@ namespace net.fushizen.avrc
 
             foreach (var newParam in specParams)
             {
-                _bindingConfig.parameterMappings.Add(new ParameterMapping()
+                _bindingConfig.signalMappings.Add(new SignalMapping
                 {
-                    avrcParameterName = newParam,
+                    avrcSignalName = newParam,
                     remappedParameterName = ""
                 });
                 madeChanges = true;
             }
 
-            _bindingConfig.parameterMappings.Sort(
-                (a, b) => String.Compare(a.avrcParameterName, b.avrcParameterName, StringComparison.CurrentCulture)
+            _bindingConfig.signalMappings.Sort(
+                (a, b) => string.Compare(a.avrcSignalName, b.avrcSignalName, StringComparison.CurrentCulture)
             );
 
             if (madeChanges) InitBindingList();
@@ -495,7 +495,7 @@ namespace net.fushizen.avrc
         {
             _bindingConfigSO = new SerializedObject(_bindingConfig);
 
-            _remapProp = _bindingConfigSO.FindProperty(nameof(AvrcBindingConfiguration.parameterMappings));
+            _remapProp = _bindingConfigSO.FindProperty(nameof(AvrcBindingConfiguration.signalMappings));
 
             _remapList = new ReorderableList(_bindingConfigSO, _remapProp, false, false, false, false)
             {
@@ -511,11 +511,11 @@ namespace net.fushizen.avrc
 
         private Single labelWidth;
 
-        private string DefaultNameMapping(ParameterMapping entry)
+        private string DefaultNameMapping(SignalMapping entry)
         {
             return _bindingConfig.role == Role.TX
-                ? $"AVRC_{_params.name}_{entry.avrcParameterName}"
-                : entry.avrcParameterName;
+                ? $"AVRC_{_params.name}_{entry.avrcSignalName}"
+                : entry.avrcSignalName;
         }
 
         private void OnDrawListElement(Rect rect, int index, bool isActive, bool isFocused)
@@ -530,13 +530,13 @@ namespace net.fushizen.avrc
                 x = rect.x,
                 y = rect.y
             };
-            GUI.Label(labelRect, new GUIContent(_bindingConfig.parameterMappings[index].avrcParameterName),
+            GUI.Label(labelRect, new GUIContent(_bindingConfig.signalMappings[index].avrcSignalName),
                 GUI.skin.label);
             rect.x += labelRect.width;
             rect.width -= labelRect.width;
 
             var element = _remapProp.GetArrayElementAtIndex(index);
-            var prop = element.FindPropertyRelative(nameof(ParameterMapping.remappedParameterName));
+            var prop = element.FindPropertyRelative(nameof(SignalMapping.remappedParameterName));
             EditorGUI.PropertyField(rect, prop, GUIContent.none);
 
             if (prop.stringValue.Equals(""))
@@ -548,7 +548,7 @@ namespace net.fushizen.avrc
                 };
                 EditorGUI.LabelField(
                     rect,
-                    DefaultNameMapping(_bindingConfig.parameterMappings[index]),
+                    DefaultNameMapping(_bindingConfig.signalMappings[index]),
                     labelStyle
                 );
             }
@@ -562,7 +562,7 @@ namespace net.fushizen.avrc
                 rect.x += labelRect.width;
                 rect.width -= labelRect.width;
 
-                var noSignalModeProp = element.FindPropertyRelative(nameof(ParameterMapping.noSignalMode));
+                var noSignalModeProp = element.FindPropertyRelative(nameof(SignalMapping.noSignalMode));
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 80, padAfter: 10), noSignalModeProp,
                     GUIContent.none);
 
@@ -574,7 +574,7 @@ namespace net.fushizen.avrc
                         break;
                     case NoSignalMode.Reset:
                     {
-                        var defaultValProp = element.FindPropertyRelative(nameof(ParameterMapping.defaultValue));
+                        var defaultValProp = element.FindPropertyRelative(nameof(SignalMapping.defaultValue));
                         // TODO: Check property type
                         defaultValProp.intValue = EditorGUI.IntField(AvrcUI.AdvanceRect(ref container, 40),
                             GUIContent.none,
@@ -583,7 +583,7 @@ namespace net.fushizen.avrc
                     }
                     case NoSignalMode.Forward:
                     {
-                        var forwardProp = element.FindPropertyRelative(nameof(ParameterMapping.forwardParameter));
+                        var forwardProp = element.FindPropertyRelative(nameof(SignalMapping.forwardParameter));
                         // TODO: Select from known properties
                         forwardProp.stringValue =
                             EditorGUI.TextField(container, GUIContent.none, forwardProp.stringValue);
@@ -591,7 +591,7 @@ namespace net.fushizen.avrc
                     }
                 }
 
-                var secretProp = element.FindPropertyRelative(nameof(ParameterMapping.isSecret));
+                var secretProp = element.FindPropertyRelative(nameof(SignalMapping.isSecret));
                 secretProp.boolValue = EditorGUI.Toggle(
                     AvrcUI.AdvanceRect(ref rect, EditorGUIUtility.singleLineHeight),
                     GUIContent.none, secretProp.boolValue
@@ -613,10 +613,10 @@ namespace net.fushizen.avrc
             // Compute label width
             labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;
 
-            foreach (var p in _bindingConfig.parameterMappings)
+            foreach (var p in _bindingConfig.signalMappings)
             {
                 labelWidth = Mathf.Max(labelWidth,
-                    new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcParameterName)).x);
+                    new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcSignalName)).x);
             }
 
             EditorGUI.BeginChangeCheck();

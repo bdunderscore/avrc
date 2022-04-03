@@ -12,9 +12,11 @@ using Object = UnityEngine.Object;
 namespace net.fushizen.avrc
 {
     [Serializable]
-    public struct ParameterMapping
+    public struct SignalMapping
     {
-        public string avrcParameterName;
+        [FormerlySerializedAs("avrcParameterName")]
+        public string avrcSignalName;
+
         public string remappedParameterName;
         public string forwardParameter;
         public int defaultValue;
@@ -75,7 +77,9 @@ namespace net.fushizen.avrc
     {
         [FormerlySerializedAs("parameters")] public AvrcLinkSpec linkSpec;
 
-        public List<ParameterMapping> parameterMappings = new List<ParameterMapping>();
+        [FormerlySerializedAs("parameterMappings")]
+        public List<SignalMapping> signalMappings = new List<SignalMapping>();
+
         public Role role = Role.Init;
         public float timeoutSeconds = 5.0f;
         public string layerName;
@@ -98,7 +102,7 @@ namespace net.fushizen.avrc
         }
     }
 
-    internal class AvrcStateSaver
+    internal static class AvrcStateSaver
     {
         internal static AvrcBindingConfiguration LoadState(AvrcLinkSpec linkSpec, VRCAvatarDescriptor descriptor)
         {

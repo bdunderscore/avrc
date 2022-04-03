@@ -29,10 +29,10 @@ namespace net.fushizen.avrc
         {
             if (!string.IsNullOrEmpty(binding.layerName)) Prefix = binding.layerName;
 
-            foreach (var nameOverride in binding.parameterMappings)
+            foreach (var nameOverride in binding.signalMappings)
             {
                 if (!string.IsNullOrWhiteSpace(nameOverride.remappedParameterName))
-                    SignalMap[nameOverride.avrcParameterName] = nameOverride.remappedParameterName;
+                    SignalMap[nameOverride.avrcSignalName] = nameOverride.remappedParameterName;
             }
         }
 

@@ -94,7 +94,7 @@ namespace net.fushizen.avrc
             // TODO: When signal is synced, only activate for local
             var subStateMachine = createIdleStateMachine(
                 signal,
-                Binding.parameterMappings.Find(mapping => mapping.avrcParameterName == signal.name),
+                Binding.signalMappings.Find(mapping => mapping.avrcSignalName == signal.name),
                 out idleState,
                 state =>
                 {
@@ -206,13 +206,13 @@ namespace net.fushizen.avrc
 
         private AnimatorStateMachine createIdleStateMachine(
             AvrcSignal signal,
-            ParameterMapping mapping,
+            SignalMapping mapping,
             out AnimatorState entryState,
             AddExitTransition addExitTransition,
             AddContinueCondition addContinueCondition
         )
         {
-            var dstName = Names.SignalMap[mapping.avrcParameterName];
+            var dstName = Names.SignalMap[mapping.avrcSignalName];
             var localOnly = IsParameterSynced(dstName);
 
             switch (mapping.noSignalMode)
