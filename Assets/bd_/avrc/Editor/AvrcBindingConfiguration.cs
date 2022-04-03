@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Serialization;
 using VRC.SDK3.Avatars.Components;
 using Object = UnityEngine.Object;
 
@@ -72,7 +73,7 @@ namespace net.fushizen.avrc
 
     public class AvrcBindingConfiguration : StateMachineBehaviour
     {
-        public AvrcParameters parameters;
+        [FormerlySerializedAs("parameters")] public AvrcLinkSpec linkSpec;
 
         public List<ParameterMapping> parameterMappings = new List<ParameterMapping>();
         public Role role = Role.Init;
@@ -99,9 +100,9 @@ namespace net.fushizen.avrc
 
     internal class AvrcStateSaver
     {
-        internal static AvrcBindingConfiguration LoadState(AvrcParameters parameters, VRCAvatarDescriptor descriptor)
+        internal static AvrcBindingConfiguration LoadState(AvrcLinkSpec linkSpec, VRCAvatarDescriptor descriptor)
         {
-            var savedState = LoadStateWithoutCloning(parameters, descriptor);
+            var savedState = LoadStateWithoutCloning(linkSpec, descriptor);
 
             if (savedState == null)
             {
@@ -112,17 +113,17 @@ namespace net.fushizen.avrc
             return Object.Instantiate(savedState);
         }
 
-        internal static AvrcBindingConfiguration LoadStateWithoutCloning(AvrcParameters parameters,
+        internal static AvrcBindingConfiguration LoadStateWithoutCloning(AvrcLinkSpec linkSpec,
             VRCAvatarDescriptor descriptor)
         {
-            var entryState = FindStateForStorage(parameters, descriptor);
+            var entryState = FindStateForStorage(linkSpec, descriptor);
 
             if (entryState == null) return null;
 
             return entryState.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
         }
 
-        private static AnimatorStateMachine FindStateForStorage(AvrcParameters parameters,
+        private static AnimatorStateMachine FindStateForStorage(AvrcLinkSpec linkSpec,
             VRCAvatarDescriptor descriptor)
         {
             var layers = AvrcAnimatorUtils.FindFxLayer(descriptor)?.layers;
@@ -132,7 +133,7 @@ namespace net.fushizen.avrc
             {
                 return l.stateMachine != null &&
                        (l.stateMachine.behaviours?.OfType<AvrcLayerMarker>()
-                            ?.Any(m => m.Parameters == parameters)
+                            ?.Any(m => m.LinkSpec == linkSpec)
                         ?? false);
             }).FirstOrDefault()?.stateMachine;
             if (setupStateMachine == null) return null;
@@ -142,7 +143,7 @@ namespace net.fushizen.avrc
 
         internal static void SaveState(VRCAvatarDescriptor descriptor, AvrcBindingConfiguration state)
         {
-            var setupStateMachine = FindStateForStorage(state.parameters, descriptor);
+            var setupStateMachine = FindStateForStorage(state.linkSpec, descriptor);
             if (setupStateMachine == null) throw new Exception("Couldn't find entry state in setup layer");
 
             var existingState = setupStateMachine.behaviours.OfType<AvrcBindingConfiguration>().FirstOrDefault();
@@ -159,7 +160,7 @@ namespace net.fushizen.avrc
 
             EditorUtility.CopySerialized(state, existingState);
             existingState.hideFlags = HideFlags.NotEditable;
-            existingState.name = $"AVRC Binding Config for {existingState.parameters.name}";
+            existingState.name = $"AVRC Binding Config for {existingState.linkSpec.name}";
             EditorUtility.SetDirty(existingState);
         }
     }

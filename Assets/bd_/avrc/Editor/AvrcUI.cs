@@ -3,13 +3,8 @@ using UnityEngine;
 
 namespace net.fushizen.avrc
 {
-    internal sealed class AvrcUI
+    internal static class AvrcUI
     {
-        private AvrcUI()
-        {
-        }
-
-
         public static Rect AdvanceRect(ref Rect rect, Single width, Single padBefore = 0, Single padAfter = 0)
         {
             var r = rect;

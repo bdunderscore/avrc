@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -11,24 +12,24 @@ namespace net.fushizen.avrc
     /**
      * Generates parameters from a AV3 menu
      */
-    public class AvrcParametersGenerator
+    public class AvrcLinkSpecGenerator
     {
+        private readonly AvrcLinkSpec _linkSpec;
         private VRCAvatarDescriptor _avatar;
         private bool _foldout;
-        private AvrcParameters _parameters;
 
-        internal AvrcParametersGenerator(
-            AvrcParameters parameters
+        internal AvrcLinkSpecGenerator(
+            AvrcLinkSpec linkSpec
         )
         {
-            _parameters = parameters;
+            _linkSpec = linkSpec;
         }
 
         private Localizations L => Localizations.Inst;
 
         internal void GenerateParametersUI()
         {
-            if (_parameters.sourceExpressionMenu == null) return;
+            if (_linkSpec.sourceExpressionMenu == null) return;
 
             _foldout = EditorGUILayout.Foldout(_foldout, L.GP_FOLDOUT);
             if (!_foldout)
@@ -48,7 +49,7 @@ namespace net.fushizen.avrc
                 }
 
                 List<string> errors = new List<string>();
-                var paramDict = GenerateParameters(errors, _parameters.sourceExpressionMenu,
+                var paramDict = GenerateParameters(errors, _linkSpec.sourceExpressionMenu,
                     _avatar.expressionParameters);
 
                 if (errors.Count > 0)
@@ -61,7 +62,7 @@ namespace net.fushizen.avrc
                     return;
                 }
 
-                var alreadyAdded = _parameters.avrcParams.Select(p => p.name).ToImmutableHashSet();
+                var alreadyAdded = _linkSpec.signals.Select(p => p.name).ToImmutableHashSet();
                 var paramList = paramDict.Values.Where(p => !alreadyAdded.Contains(p.name)).ToList();
 
                 if (paramList.Count == 0)
@@ -77,24 +78,24 @@ namespace net.fushizen.avrc
                     {
                         foreach (var avrcParameter in paramList)
                         {
-                            _parameters.avrcParams.Add(avrcParameter);
+                            _linkSpec.signals.Add(avrcParameter);
                         }
 
-                        EditorUtility.SetDirty(_parameters);
+                        EditorUtility.SetDirty(_linkSpec);
                         AssetDatabase.SaveAssets();
                     }
                 }
             }
         }
 
-        internal Dictionary<string, AvrcParameters.AvrcParameter> GenerateParameters(
+        private Dictionary<string, AvrcSignal> GenerateParameters(
             List<string> errors,
             VRCExpressionsMenu rootMenu,
             VRCExpressionParameters expressionParameters
         )
         {
             if (rootMenu == null || expressionParameters == null)
-                return new Dictionary<string, AvrcParameters.AvrcParameter>();
+                return new Dictionary<string, AvrcSignal>();
 
             Dictionary<string, VRCExpressionParameters.Parameter> knownParameters =
                 new Dictionary<string, VRCExpressionParameters.Parameter>();
@@ -111,8 +112,8 @@ namespace net.fushizen.avrc
                 }
             }
 
-            Dictionary<string, AvrcParameters.AvrcParameter> avrcParams =
-                new Dictionary<string, AvrcParameters.AvrcParameter>();
+            var avrcParams =
+                new Dictionary<string, AvrcSignal>();
             HashSet<VRCExpressionsMenu> enqueued = new HashSet<VRCExpressionsMenu>();
             Queue<VRCExpressionsMenu> toVisit = new Queue<VRCExpressionsMenu>();
 
@@ -157,20 +158,20 @@ namespace net.fushizen.avrc
             return avrcParams;
         }
 
-
+        [SuppressMessage("ReSharper", "UnusedParameter.Local")]
         private void RecordFloatParam(
             List<string> errors,
-            Dictionary<string, AvrcParameters.AvrcParameter> avrcParams,
+            Dictionary<string, AvrcSignal> avrcParams,
             Dictionary<string, VRCExpressionParameters.Parameter> knownParameters,
             VRCExpressionsMenu.Control.Parameter subParameter
         )
         {
-            return; // unsupported
+            // unsupported
         }
 
         private void RecordIntParam(
             List<string> errors,
-            Dictionary<string, AvrcParameters.AvrcParameter> avrcParams,
+            Dictionary<string, AvrcSignal> avrcParams,
             Dictionary<string, VRCExpressionParameters.Parameter> knownParameters,
             VRCExpressionsMenu.Control.Parameter controlParameter,
             float controlValue
@@ -192,14 +193,14 @@ namespace net.fushizen.avrc
             }
 
             var avrcType = ty == VRCExpressionParameters.ValueType.Bool
-                ? AvrcParameters.AvrcParameterType.Bool
-                : AvrcParameters.AvrcParameterType.Int;
+                ? AvrcSignalType.Bool
+                : AvrcSignalType.Int;
 
             int intVal = Mathf.RoundToInt(controlValue);
 
             if (!avrcParams.ContainsKey(controlParameter.name))
             {
-                avrcParams[controlParameter.name] = new AvrcParameters.AvrcParameter
+                avrcParams[controlParameter.name] = new AvrcSignal
                 {
                     name = controlParameter.name,
                     type = avrcType,

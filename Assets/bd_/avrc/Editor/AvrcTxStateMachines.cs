@@ -10,7 +10,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 // TODO: Need to have the owner of the TX avatar be authoritative over the transmission state machine.
 // Otherwise we end up with the TX avatar RX clone (TX->RX avatar) ending transmission (or triggering a false
-// transmission) before the true transmitter has applied the parameter driver states.
+// transmission) before the true transmitter has applied the signal driver states.
 namespace net.fushizen.avrc
 {
     [SuppressMessage("ReSharper", "HeapView.ObjectAllocation.Evident")]
@@ -33,7 +33,7 @@ namespace net.fushizen.avrc
             CreateGlobalDefaultsLayer();
             AddOrReplaceLayer(Names.LayerSetup, TransmitterSetupLayer());
 
-            foreach (var param in Parameters.avrcParams)
+            foreach (var param in LinkSpec.signals)
             {
                 CreateParameterLayer(param);
             }
@@ -67,10 +67,10 @@ namespace net.fushizen.avrc
             List<VRCExpressionParameters.Parameter> parameters
                 = new List<VRCExpressionParameters.Parameter>(Avatar.expressionParameters.parameters);
 
-            foreach (var param in Parameters.avrcParams)
+            foreach (var param in LinkSpec.signals)
             {
-                if (param.syncDirection != AvrcParameters.SyncDirection.TwoWay) continue;
-                var parameterName = param.TxParameterFlag(Names);
+                if (param.syncDirection != SyncDirection.TwoWay) continue;
+                var parameterName = param.TxSignalFlag(Names);
 
                 if (knownParameters.Contains(parameterName)) continue;
                 if (remaining <= 0) throw new Exception("Too many synced parameters");
@@ -88,7 +88,7 @@ namespace net.fushizen.avrc
         }
 
         protected override AnimatorStateMachine OneWayParamLayer(
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition,
@@ -102,10 +102,10 @@ namespace net.fushizen.avrc
             var ybias = -states.Length / 2.0f;
             for (int i = 0; i < states.Length; i++)
             {
-                states[i] = rootStateMachine.AddState(parameter.name + "_" + i, pos(1, ybias + i));
+                states[i] = rootStateMachine.AddState(signal.name + "_" + i, pos(1, ybias + i));
                 states[i].motion = Animations.Named(
-                    Names.Prefix + "_" + parameter.name + "_" + i,
-                    () => Animations.SignalClip(parameter, false, i)
+                    Names.Prefix + "_" + signal.name + "_" + i,
+                    () => Animations.SignalClip(signal, false, i)
                 );
 
                 // TODO minimize any state transitions
@@ -120,17 +120,14 @@ namespace net.fushizen.avrc
         }
 
         protected override AnimatorStateMachine TwoWayParamLayer(
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition,
             DriveParameter driveParameter
         )
         {
-            var idleMotion = Animations.Named(
-                Names.Prefix + "_" + parameter.name + "_Idle",
-                () => Animations.ConstantClip(Names.ParameterPath(parameter), Parameters.baseOffset, -1)
-            );
+            var idleMotion = AvrcAssets.EmptyClip();
 
             AnimatorStateMachine stateMachine = new AnimatorStateMachine();
 
@@ -145,7 +142,7 @@ namespace net.fushizen.avrc
 
             var rx = stateMachine.AddState("Receive", pos(3, 0));
             rx.motion = idleMotion;
-            rx.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.TxParameterFlag(Names), 0)};
+            rx.behaviours = new StateMachineBehaviour[] {ParameterDriver(signal.TxSignalFlag(Names), 0)};
             transition = AddInstantTransition(disconnected, rx);
             transition.AddCondition(AnimatorConditionMode.If, 1, Names.PubParamPeerPresent);
             // This transition controls entry to all passive and active states, so gate it to be
@@ -154,15 +151,15 @@ namespace net.fushizen.avrc
 
             var triggerEntry = stateMachine.AddState("TriggerEntry", pos(2, 1 + values / 2.0f));
             triggerEntry.motion = idleMotion;
-            AddParameter(parameter.TxParameterFlag(Names), AnimatorControllerParameterType.Bool);
+            AddParameter(signal.TxSignalFlag(Names), AnimatorControllerParameterType.Bool);
             transition = AddInstantTransition(disconnected, triggerEntry);
-            transition.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
+            transition.AddCondition(AnimatorConditionMode.If, 1, signal.TxSignalFlag(Names));
             transition = AddInstantTransition(triggerEntry, disconnected);
-            transition.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, signal.TxSignalFlag(Names));
 
             var tx = stateMachine.AddState("Transmit", pos(5, 0));
             tx.motion = idleMotion;
-            tx.behaviours = new StateMachineBehaviour[] {ParameterDriver(parameter.TxParameterFlag(Names), 0)};
+            tx.behaviours = new StateMachineBehaviour[] {ParameterDriver(signal.TxSignalFlag(Names), 0)};
 
             var ybias_owner = 0.5f - values / 2.0f;
 
@@ -188,39 +185,39 @@ namespace net.fushizen.avrc
                 activeStates[i].motion = idleMotion;
                 triggerStates[i] = stateMachine.AddState($"Trigger[{i}]", pos(1, 1 + i));
                 triggerStates[i].motion = Animations.Named(
-                    $"{Names.Prefix}_{parameter.name}_{i}",
-                    () => Animations.SignalClip(parameter, false, i)
+                    $"{Names.Prefix}_{signal.name}_{i}",
+                    () => Animations.SignalClip(signal, false, i)
                 );
 
                 activeStates[i].behaviours = new StateMachineBehaviour[]
-                    {ParameterDriver(parameter.TxParameterFlag(Names), 1)};
+                    {ParameterDriver(signal.TxSignalFlag(Names), 1)};
 
                 transition = AddInstantTransition(triggerStates[i], disconnected);
-                transition.AddCondition(AnimatorConditionMode.IfNot, 0, parameter.TxParameterFlag(Names));
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, signal.TxSignalFlag(Names));
                 transition = AddInstantTransition(triggerStates[i], disconnected);
                 notEqualsCondition(transition, i);
                 transition = AddInstantTransition(triggerEntry, triggerStates[i]);
-                transition.AddCondition(AnimatorConditionMode.If, 1, parameter.TxParameterFlag(Names));
+                transition.AddCondition(AnimatorConditionMode.If, 1, signal.TxSignalFlag(Names));
                 equalsCondition(transition, i);
             }
 
-            var ackParam = Names.InternalParameter(parameter, "ACK");
+            var ackParam = Names.InternalParameter(signal, "ACK");
             AddParameter(ackParam, AnimatorControllerParameterType.Float);
 
             for (int i = 0; i < passiveStates.Length; i++)
             {
                 // Write TX variable on entering passive state
-                var driver = ParameterDriver(parameter.TxParameterFlag(Names), 0);
+                var driver = ParameterDriver(signal.TxSignalFlag(Names), 0);
                 driveParameter(driver, i);
                 passiveStates[i].behaviours = new StateMachineBehaviour[] {driver};
 
                 // Entry into passive state from rx
                 transition = AddInstantTransition(rx, passiveStates[i]);
-                AddSignalCondition(transition, parameter, i, true);
+                AddSignalCondition(transition, signal, i, true);
                 AddPilotCondition(transition);
 
                 // Exit from passive to rx when ack value changes
-                AddAntiSignalConditions(parameter, i, true, () =>
+                AddAntiSignalConditions(signal, i, true, () =>
                 {
                     var t = AddInstantTransition(passiveStates[i], rx);
                     AddPilotCondition(t);
@@ -229,7 +226,7 @@ namespace net.fushizen.avrc
 
                 // Start transmitting when: Local value changes, and remote has not changed
                 transition = AddInstantTransition(passiveStates[i], tx);
-                AddSignalCondition(transition, parameter, i, true);
+                AddSignalCondition(transition, signal, i, true);
                 AddPilotCondition(transition);
                 notEqualsCondition(transition, i);
 
@@ -240,7 +237,7 @@ namespace net.fushizen.avrc
 
                 // Exit from active state when acknowledged
                 transition = AddInstantTransition(activeStates[i], passiveStates[i]);
-                AddSignalCondition(transition, parameter, i, true);
+                AddSignalCondition(transition, signal, i, true);
                 AddPilotCondition(transition);
             }
 

@@ -31,7 +31,7 @@ namespace net.fushizen.avrc
             // Set up a mesh to expand our bounding box locally for the transmitter
             // AddOrReplaceLayer("_AVRC_" + Names.Prefix + "_RXBounds", BoundsSetupStateMachine());
 
-            foreach (var param in Parameters.avrcParams)
+            foreach (var param in LinkSpec.signals)
             {
                 CreateParameterLayer(param);
             }
@@ -47,36 +47,36 @@ namespace net.fushizen.avrc
             );
         }
 
-        protected override AnimatorStateMachine TwoWayParamLayer(AvrcParameters.AvrcParameter parameter, int values,
+        protected override AnimatorStateMachine TwoWayParamLayer(AvrcSignal signal, int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition, DriveParameter driveParameter)
         {
-            return FiniteParamLayer(true, parameter, values, equalsCondition, notEqualsCondition, driveParameter);
+            return FiniteParamLayer(true, signal, values, equalsCondition, notEqualsCondition, driveParameter);
         }
 
         protected override AnimatorStateMachine OneWayParamLayer(
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition,
             DriveParameter driveParameter
         )
         {
-            return FiniteParamLayer(false, parameter, values, equalsCondition, notEqualsCondition, driveParameter);
+            return FiniteParamLayer(false, signal, values, equalsCondition, notEqualsCondition, driveParameter);
         }
 
         AnimatorStateMachine FiniteParamLayer(
             bool twoWay,
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition,
             DriveParameter driveParameter
         )
         {
-            var binding = GetParamBinding(parameter);
+            var binding = GetParamBinding(signal);
             var presenceSignal = binding.isSecret ? Names.PubParamEitherLocal : Names.PubParamPeerPresent;
-            var driverIsLocal = HasSyncedParameter(Names.ParameterMap[parameter.name]);
+            var driverIsLocal = HasSyncedParameter(Names.SignalMap[signal.name]);
 
             var stateMachine = new AnimatorStateMachine();
 
@@ -85,16 +85,16 @@ namespace net.fushizen.avrc
 
             var localDrivenUnstable = new AnimatorState[values];
 
-            var conditionParamName = Names.InternalParameter(parameter);
+            var conditionParamName = Names.InternalParameter(signal);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
 
             var startup = stateMachine.AddState("Startup", pos(0, 0));
 
             AnimatorState idleState;
-            // TODO: When parameter is synced, only activate for local
+            // TODO: When signal is synced, only activate for local
             var subStateMachine = createIdleStateMachine(
-                parameter,
-                Binding.parameterMappings.Find(mapping => mapping.avrcParameterName == parameter.name),
+                signal,
+                Binding.parameterMappings.Find(mapping => mapping.avrcParameterName == signal.name),
                 out idleState,
                 state =>
                 {
@@ -123,11 +123,11 @@ namespace net.fushizen.avrc
 
             for (var i = 0; i < localDriven.Length; i++)
             {
-                localDriven[i] = stateMachine.AddState($"LD_{parameter.name}_{i}",
+                localDriven[i] = stateMachine.AddState($"LD_{signal.name}_{i}",
                     pos(1, i - localDriven.Length / 2.0f));
-                localDrivenUnstable[i] = stateMachine.AddState($"LU_{parameter.name}_{i}",
+                localDrivenUnstable[i] = stateMachine.AddState($"LU_{signal.name}_{i}",
                     pos(1.25f, i - localDriven.Length / 2.0f + 0.25f));
-                remoteDriven[i] = stateMachine.AddState($"RD_{parameter.name}_{i}",
+                remoteDriven[i] = stateMachine.AddState($"RD_{signal.name}_{i}",
                     pos(3, i + 0.5f - localDriven.Length / 2.0f));
 
                 var driver = ParameterDriver(driverIsLocal);
@@ -139,8 +139,8 @@ namespace net.fushizen.avrc
                 if (twoWay)
                 {
                     localDriven[i].motion = Animations.Named(
-                        $"{Names.Prefix}_{parameter.name}_{i}_ACK",
-                        () => Animations.SignalClip(parameter, true, i)
+                        $"{Names.Prefix}_{signal.name}_{i}_ACK",
+                        () => Animations.SignalClip(signal, true, i)
                     );
                 }
 
@@ -159,7 +159,7 @@ namespace net.fushizen.avrc
                 notEqualsCondition(transition, i);
 
                 // Transition to receive when remote side drives a new value.
-                AddAntiSignalConditions(parameter, i, false, () =>
+                AddAntiSignalConditions(signal, i, false, () =>
                 {
                     var t = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
                     AddPilotCondition(t);
@@ -172,10 +172,10 @@ namespace net.fushizen.avrc
 
                 // Wait a moment before we commit. This helps avoid spurious transitions when one side is moving.
                 transition = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
-                AddSignalCondition(transition, parameter, i, false);
+                AddSignalCondition(transition, signal, i, false);
                 AddPilotCondition(transition);
 
-                AddAntiSignalConditions(parameter, i, false, () =>
+                AddAntiSignalConditions(signal, i, false, () =>
                 {
                     var t = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
                     AddPilotCondition(t);
@@ -187,10 +187,10 @@ namespace net.fushizen.avrc
 
                 // Transition back from TX driven state after receive
                 transition = AddInstantTransition(drivenByTx, remoteDriven[i]);
-                AddSignalCondition(transition, parameter, i, false);
+                AddSignalCondition(transition, signal, i, false);
                 AddPilotCondition(transition);
 
-                // And back to local driven once we update the parameter. This needs to be an always-true transition.
+                // And back to local driven once we update the signal. This needs to be an always-true transition.
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);
                 transition.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);
@@ -205,14 +205,14 @@ namespace net.fushizen.avrc
         }
 
         private AnimatorStateMachine createIdleStateMachine(
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             ParameterMapping mapping,
             out AnimatorState entryState,
             AddExitTransition addExitTransition,
             AddContinueCondition addContinueCondition
         )
         {
-            var dstName = Names.ParameterMap[mapping.avrcParameterName];
+            var dstName = Names.SignalMap[mapping.avrcParameterName];
             var localOnly = IsParameterSynced(dstName);
 
             switch (mapping.noSignalMode)
@@ -237,9 +237,9 @@ namespace net.fushizen.avrc
                 }
                 case NoSignalMode.Forward:
                 {
-                    switch (parameter.type)
+                    switch (signal.type)
                     {
-                        case AvrcParameters.AvrcParameterType.Bool:
+                        case AvrcSignalType.Bool:
                             return createBoolCopyStateMachine(
                                 localOnly,
                                 mapping.forwardParameter,
@@ -248,7 +248,7 @@ namespace net.fushizen.avrc
                                 addExitTransition,
                                 addContinueCondition
                             );
-                        case AvrcParameters.AvrcParameterType.Int:
+                        case AvrcSignalType.Int:
                             return createIntCopyStateMachine(
                                 localOnly,
                                 mapping.forwardParameter,
@@ -263,7 +263,7 @@ namespace net.fushizen.avrc
                 }
             }
 
-            throw new Exception("Unknown NoSignalMode or parameter type");
+            throw new Exception("Unknown NoSignalMode or signal type");
         }
 
         private bool IsParameterSynced(string name)

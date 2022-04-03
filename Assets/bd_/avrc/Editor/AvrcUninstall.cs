@@ -8,11 +8,11 @@ using Object = UnityEngine.Object;
 
 namespace net.fushizen.avrc
 {
-    internal class AvrcUninstall
+    internal static class AvrcUninstall
     {
-        public static bool HasAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor, AvrcParameters parameters = null)
+        public static bool HasAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor, AvrcLinkSpec linkSpec = null)
         {
-            var names = parameters != null ? new AvrcNames(parameters) : null;
+            var names = linkSpec != null ? new AvrcNames(linkSpec) : null;
             var fx = AvrcAnimatorUtils.FindFxLayer(avatarDescriptor);
 
             if (names != null)
@@ -25,7 +25,7 @@ namespace net.fushizen.avrc
             {
                 return avatarDescriptor.transform.Find("AVRC") != null
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
-                       .Any(layer => AvrcLayerMarker.IsMatchingLayer(layer, parameters));
+                       .Any(layer => AvrcLayerMarker.IsMatchingLayer(layer, linkSpec));
             }
         }
 
@@ -75,8 +75,8 @@ namespace net.fushizen.avrc
                 Undo.RegisterFullObjectHierarchyUndo(fx, "Remove AVRC");
                 fx.layers = fx.layers.Where(layer =>
                 {
-                    if (bindingConfiguration != null && bindingConfiguration.parameters != null)
-                        return !AvrcLayerMarker.IsMatchingLayer(layer, bindingConfiguration.parameters);
+                    if (bindingConfiguration != null && bindingConfiguration.linkSpec != null)
+                        return !AvrcLayerMarker.IsMatchingLayer(layer, bindingConfiguration.linkSpec);
                     return !AvrcLayerMarker.IsAvrcLayer(layer);
                 }).ToArray();
                 fx.parameters = fx.parameters

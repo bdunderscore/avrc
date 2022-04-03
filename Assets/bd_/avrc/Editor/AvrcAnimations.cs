@@ -7,13 +7,13 @@ namespace net.fushizen.avrc
     internal class AvrcAnimations
     {
         private const float BOUNDS_SIZE = 1000f;
+
+        private readonly AvrcLinkSpec _linkSpec;
         private readonly AvrcNames _names;
 
-        private readonly AvrcParameters _parameters;
-
-        public AvrcAnimations(AvrcParameters parameters, AvrcNames names)
+        public AvrcAnimations(AvrcLinkSpec linkSpec, AvrcNames names)
         {
-            this._parameters = parameters;
+            _linkSpec = linkSpec;
             this._names = names;
         }
 
@@ -78,11 +78,11 @@ namespace net.fushizen.avrc
             return clip;
         }
 
-        internal AnimationClip SignalClip(AvrcParameters.AvrcParameter param, bool isAck, int index)
+        internal AnimationClip SignalClip(AvrcSignal param, bool isAck, int index)
         {
             var clip = new AnimationClip();
 
-            foreach (var bit in _names.SignalParam(param, isAck))
+            foreach (var bit in _names.SignalContacts(param, isAck))
             {
                 clip.SetCurve($"{_names.ObjectPath}/{bit.ObjectName}", typeof(GameObject), "m_IsActive",
                     AnimationCurve.Constant(0, 1, index & 1));
@@ -98,12 +98,12 @@ namespace net.fushizen.avrc
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(ParentConstraint), "m_Active", AnimationCurve.Constant(0, 1, 1));
 
-            foreach (var pilotSignal in _names.SignalPilots(role))
+            foreach (var pilotSignal in _names.PilotContacts(role))
                 clip.SetCurve($"{_names.ObjectPath}/{pilotSignal.ObjectName}", typeof(VRCContactSender),
                     "m_Enabled", AnimationCurve.Constant(0, 1, 1)
                 );
 
-            clip.SetCurve($"{_names.ObjectPath}/{_names.SignalLocal(role).ObjectName}", typeof(VRCContactSender),
+            clip.SetCurve($"{_names.ObjectPath}/{_names.LocalContacts(role).ObjectName}", typeof(VRCContactSender),
                 "m_Enabled",
                 AnimationCurve.Constant(0, 1, local == LocalState.OwnerLocal ? 1.0f : 0.0f));
 

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -58,7 +59,7 @@ namespace net.fushizen.avrc
 
         private static Localizations Current = null;
 
-        private GUIContent[] PROP_TYPE_NAMES_ = System.Enum.GetNames(typeof(AvrcParameters.AvrcParameterType))
+        private GUIContent[] PROP_TYPE_NAMES_ = Enum.GetNames(typeof(AvrcSignalType))
             .Select(n => new GUIContent(n)).ToArray();
 
         private Localizations()

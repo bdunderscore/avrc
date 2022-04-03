@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace net.fushizen.avrc
 {
-    [CustomPropertyDrawer(typeof(AvrcParameters.AvrcParameterType))]
+    [CustomPropertyDrawer(typeof(AvrcSignalType))]
     public class FieldTypeDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)

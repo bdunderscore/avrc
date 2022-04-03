@@ -13,29 +13,29 @@ namespace net.fushizen.avrc
         // Just under 5m - the maximum size for contacts to work reliably
         internal const float Diameter = 4.5f;
         private const float Separation = Diameter + 0.5f;
+        private readonly AvrcLinkSpec _linkSpec;
 
         private readonly AvrcNames _names;
-        private readonly AvrcParameters _parameters;
         private readonly Role _role;
         private GameObject _baseObject;
         private Vector3 _pos;
 
-        public AvrcObjects(AvrcParameters parameters, AvrcNames names, Role role)
+        public AvrcObjects(AvrcLinkSpec linkSpec, AvrcNames names, Role role)
         {
-            _parameters = parameters;
+            _linkSpec = linkSpec;
             _names = names;
             _role = role;
             _pos = new Vector3();
         }
 
-        private ContactBase CreateTriggerPair(
-            Signal signal,
+        private ContactBase CreateContactPair(
+            ContactSpec contactSpec,
             bool defaultActive = true,
             Role sender = Role.TX
         )
         {
             var obj = new GameObject();
-            obj.name = signal.ObjectName;
+            obj.name = contactSpec.ObjectName;
             obj.transform.parent = _baseObject.transform;
             obj.transform.localPosition = _pos;
             _pos += new Vector3(0, Separation, 0);
@@ -50,47 +50,47 @@ namespace net.fushizen.avrc
             {
                 var receiver = obj.AddComponent<VRCContactReceiver>();
                 contact = receiver;
-                receiver.parameter = signal.ParamName;
+                receiver.parameter = contactSpec.ParamName;
                 receiver.receiverType = ContactReceiver.ReceiverType.Constant;
             }
 
             contact.shapeType = ContactBase.ShapeType.Sphere;
             contact.radius = Diameter * 0.5f;
             contact.position = _pos;
-            contact.collisionTags = AvrcLicenseManager.MungeContactTag(signal.TagName, sender == _role);
+            contact.collisionTags = AvrcLicenseManager.MungeContactTag(contactSpec.TagName, sender == _role);
 
             contact.enabled = sender != _role || defaultActive;
 
             return contact;
         }
 
-        internal void CreateTriggers(GameObject avatar)
+        internal void CreateContacts(GameObject avatar)
         {
             _baseObject = BuildConstraintBase(avatar, _names.Prefix);
 
-            var rxPilots = _names.SignalPilots(Role.RX);
-            var txPilots = _names.SignalPilots(Role.TX);
+            var rxPilots = _names.PilotContacts(Role.RX);
+            var txPilots = _names.PilotContacts(Role.TX);
 
-            CreateTriggerPair(rxPilots[0], false, Role.RX);
-            CreateTriggerPair(txPilots[0], false);
+            CreateContactPair(rxPilots[0], false, Role.RX);
+            CreateContactPair(txPilots[0], false);
 
-            foreach (var param in _parameters.avrcParams)
+            foreach (var param in _linkSpec.signals)
             {
-                var signals = _names.SignalParam(param, false);
-                foreach (var signal in signals) CreateTriggerPair(signal);
+                var signals = _names.SignalContacts(param, false);
+                foreach (var signal in signals) CreateContactPair(signal);
 
-                if (param.syncDirection == AvrcParameters.SyncDirection.TwoWay)
+                if (param.syncDirection == SyncDirection.TwoWay)
                 {
-                    var acks = _names.SignalParam(param, true);
-                    foreach (var signal in acks) CreateTriggerPair(signal, sender: Role.RX);
+                    var acks = _names.SignalContacts(param, true);
+                    foreach (var signal in acks) CreateContactPair(signal, sender: Role.RX);
                 }
             }
 
-            CreateTriggerPair(_names.SignalLocal(Role.RX), false, Role.RX);
-            CreateTriggerPair(_names.SignalLocal(Role.TX), false);
+            CreateContactPair(_names.LocalContacts(Role.RX), false, Role.RX);
+            CreateContactPair(_names.LocalContacts(Role.TX), false);
 
-            CreateTriggerPair(rxPilots[1], false, Role.RX);
-            CreateTriggerPair(txPilots[1], false);
+            CreateContactPair(rxPilots[1], false, Role.RX);
+            CreateContactPair(txPilots[1], false);
         }
 
         private GameObject BuildConstraintBase(
@@ -119,7 +119,7 @@ namespace net.fushizen.avrc
             });
             constraint.translationOffsets = new[]
             {
-                _parameters.baseOffset
+                _linkSpec.baseOffset
             };
             constraint.locked = true;
 

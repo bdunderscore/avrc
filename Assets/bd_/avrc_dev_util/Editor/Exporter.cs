@@ -19,7 +19,7 @@ namespace net.fushizen.avrc
             Debug.LogWarning(string.Join(", ", assets));
             AssetDatabase.ExportPackage(assets, "avrc-dev.unitypackage");
 
-            var assembly = Assembly.GetAssembly(typeof(AvrcParameters));
+            var assembly = Assembly.GetAssembly(typeof(AvrcLinkSpec));
             var gen = assembly.GetType("net.fushizen.avrc.NoExportLicenseGen", true);
             gen.GetMethod("GenerateLicense", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
 

@@ -19,10 +19,10 @@ namespace net.fushizen.avrc
 
         protected readonly VRCAvatarDescriptor Avatar;
         protected readonly AvrcBindingConfiguration Binding;
+        protected readonly AvrcLinkSpec LinkSpec;
         protected readonly AvrcNames Names;
         protected readonly AvrcObjects Objects;
         private readonly ImmutableDictionary<string, ParameterMapping> parameterBindings;
-        protected readonly AvrcParameters Parameters;
 
         private readonly ImmutableHashSet<string> syncedParameters;
         protected readonly float Timeout;
@@ -32,11 +32,11 @@ namespace net.fushizen.avrc
             Avatar = avatarDescriptor;
             Binding = binding;
             Names = new AvrcNames(binding);
-            Parameters = binding.parameters;
+            LinkSpec = binding.linkSpec;
             Timeout = Mathf.Max(1.0f, binding.timeoutSeconds);
 
-            Animations = new AvrcAnimations(Parameters, Names);
-            Objects = new AvrcObjects(Parameters, Names, Binding.role);
+            Animations = new AvrcAnimations(LinkSpec, Names);
+            Objects = new AvrcObjects(LinkSpec, Names, Binding.role);
 
             foreach (var c in avatarDescriptor.baseAnimationLayers)
             {
@@ -59,9 +59,9 @@ namespace net.fushizen.avrc
             ).ToImmutableDictionary();
         }
 
-        protected ParameterMapping GetParamBinding(AvrcParameters.AvrcParameter parameter)
+        protected ParameterMapping GetParamBinding(AvrcSignal signal)
         {
-            return parameterBindings[parameter.name];
+            return parameterBindings[signal.name];
         }
 
         protected bool HasSyncedParameter(string name)
@@ -106,7 +106,7 @@ namespace net.fushizen.avrc
 
         protected void AddPilotCondition(AnimatorStateTransition t, bool present = true)
         {
-            foreach (var pilot in Names.SignalPilots(Binding.role.Other()))
+            foreach (var pilot in Names.PilotContacts(Binding.role.Other()))
             {
                 AddParameter(pilot.ParamName, AnimatorControllerParameterType.Float);
                 t.AddCondition(present ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less, 0.5f,
@@ -114,10 +114,10 @@ namespace net.fushizen.avrc
             }
         }
 
-        protected void AddSignalCondition(AnimatorStateTransition t, AvrcParameters.AvrcParameter parameter, int index,
+        protected void AddSignalCondition(AnimatorStateTransition t, AvrcSignal signal, int index,
             bool ack)
         {
-            foreach (var bit in Names.SignalParam(parameter, ack))
+            foreach (var bit in Names.SignalContacts(signal, ack))
             {
                 var mode = (index & 1) == 1 ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less;
                 AddParameter(bit.ParamName, AnimatorControllerParameterType.Float);
@@ -126,10 +126,10 @@ namespace net.fushizen.avrc
             }
         }
 
-        protected void AddAntiSignalConditions(AvrcParameters.AvrcParameter parameter, int index, bool ack,
+        protected void AddAntiSignalConditions(AvrcSignal signal, int index, bool ack,
             TransitionProvider transitionProvider)
         {
-            foreach (var bit in Names.SignalParam(parameter, ack))
+            foreach (var bit in Names.SignalContacts(signal, ack))
             {
                 var mode = (index & 1) != 1 ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less;
                 var t = transitionProvider();
@@ -147,7 +147,7 @@ namespace net.fushizen.avrc
                     if (param.type != ty)
                     {
                         throw new ArgumentException(
-                            $"Animator controller already has a parameter named ${name} but with the wrong type");
+                            $"Animator controller already has a signal named ${name} but with the wrong type");
                     }
 
                     return;
@@ -157,28 +157,28 @@ namespace net.fushizen.avrc
             AnimatorController.AddParameter(name, ty);
         }
 
-        protected void CreateParameterLayer(AvrcParameters.AvrcParameter parameter)
+        protected void CreateParameterLayer(AvrcSignal signal)
         {
-            switch (parameter.type)
+            switch (signal.type)
             {
-                case AvrcParameters.AvrcParameterType.Bool:
-                    AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Bool);
+                case AvrcSignalType.Bool:
+                    AddParameter(Names.SignalToParam(signal), AnimatorControllerParameterType.Bool);
                     break;
-                case AvrcParameters.AvrcParameterType.Int:
-                    AddParameter(Names.UserParameter(parameter), AnimatorControllerParameterType.Int);
+                case AvrcSignalType.Int:
+                    AddParameter(Names.SignalToParam(signal), AnimatorControllerParameterType.Int);
                     break;
             }
 
             AnimatorStateMachine animatorStateMachine = null;
-            switch (parameter.type)
+            switch (signal.type)
             {
-                case AvrcParameters.AvrcParameterType.Bool:
+                case AvrcSignalType.Bool:
                 {
                     EqualsCondition eq = (transition, index) =>
                     {
                         transition.AddCondition(
                             index != 0 ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot,
-                            0, Names.UserParameter(parameter)
+                            0, Names.SignalToParam(signal)
                         );
                     };
                     NotEqualsCondition neq = (transition, index) => eq(transition, index != 0 ? 0 : 1);
@@ -186,60 +186,60 @@ namespace net.fushizen.avrc
                     {
                         driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter()
                         {
-                            name = Names.UserParameter(parameter),
+                            name = Names.SignalToParam(signal),
                             type = VRC_AvatarParameterDriver.ChangeType.Set,
                             value = index
                         });
                     };
 
-                    if (parameter.syncDirection == AvrcParameters.SyncDirection.OneWay)
+                    if (signal.syncDirection == SyncDirection.OneWay)
                     {
-                        animatorStateMachine = OneWayParamLayer(parameter, 2, eq, neq, drive);
+                        animatorStateMachine = OneWayParamLayer(signal, 2, eq, neq, drive);
                     }
                     else
                     {
-                        animatorStateMachine = TwoWayParamLayer(parameter, 2, eq, neq, drive);
+                        animatorStateMachine = TwoWayParamLayer(signal, 2, eq, neq, drive);
                     }
 
                     break;
                 }
-                case AvrcParameters.AvrcParameterType.Int:
+                case AvrcSignalType.Int:
                 {
-                    var values = parameter.maxVal - parameter.minVal + 1;
+                    var values = signal.maxVal - signal.minVal + 1;
 
                     EqualsCondition eq = (transition, index) =>
                     {
                         transition.AddCondition(
                             AnimatorConditionMode.Equals,
-                            index + parameter.minVal,
-                            Names.UserParameter(parameter)
+                            index + signal.minVal,
+                            Names.SignalToParam(signal)
                         );
                     };
                     NotEqualsCondition neq = (transition, index) =>
                     {
                         transition.AddCondition(
                             AnimatorConditionMode.NotEqual,
-                            index + parameter.minVal,
-                            Names.UserParameter(parameter)
+                            index + signal.minVal,
+                            Names.SignalToParam(signal)
                         );
                     };
                     DriveParameter drive = (driver, index) =>
                     {
                         driver.parameters.Add(new VRC_AvatarParameterDriver.Parameter()
                         {
-                            name = Names.UserParameter(parameter),
+                            name = Names.SignalToParam(signal),
                             type = VRC_AvatarParameterDriver.ChangeType.Set,
-                            value = index + parameter.minVal
+                            value = index + signal.minVal
                         });
                     };
 
-                    if (parameter.syncDirection == AvrcParameters.SyncDirection.OneWay)
+                    if (signal.syncDirection == SyncDirection.OneWay)
                     {
-                        animatorStateMachine = OneWayParamLayer(parameter, values, eq, neq, drive);
+                        animatorStateMachine = OneWayParamLayer(signal, values, eq, neq, drive);
                     }
                     else
                     {
-                        animatorStateMachine = TwoWayParamLayer(parameter, values, eq, neq, drive);
+                        animatorStateMachine = TwoWayParamLayer(signal, values, eq, neq, drive);
                     }
 
                     break;
@@ -251,11 +251,11 @@ namespace net.fushizen.avrc
 
             if (animatorStateMachine != null)
             {
-                AddOrReplaceLayer(Names.ParameterLayerName(parameter), animatorStateMachine);
+                AddOrReplaceLayer(Names.ParameterLayerName(signal), animatorStateMachine);
             }
             else
             {
-                RemoveLayer(Names.ParameterLayerName(parameter));
+                RemoveLayer(Names.ParameterLayerName(signal));
             }
         }
 
@@ -278,7 +278,7 @@ namespace net.fushizen.avrc
             animatorStateMachine.name = layerName;
             AvrcLayerMarker.MarkLayer(
                 animatorStateMachine,
-                globalLayerType == GlobalLayerType.NotGlobalLayer ? Parameters : null,
+                globalLayerType == GlobalLayerType.NotGlobalLayer ? LinkSpec : null,
                 globalLayerType
             );
 
@@ -345,7 +345,7 @@ namespace net.fushizen.avrc
         }
 
         protected abstract AnimatorStateMachine OneWayParamLayer(
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition,
@@ -353,7 +353,7 @@ namespace net.fushizen.avrc
         );
 
         protected abstract AnimatorStateMachine TwoWayParamLayer(
-            AvrcParameters.AvrcParameter parameter,
+            AvrcSignal signal,
             int values,
             EqualsCondition equalsCondition,
             NotEqualsCondition notEqualsCondition,
@@ -466,8 +466,8 @@ namespace net.fushizen.avrc
                 () => Animations.PresenceClip(AvrcAnimations.LocalState.PeerLocal, Binding.role)
             );
             t = AddInstantTransition(init, peerLocal);
-            AddParameter(Names.SignalLocal(Binding.role.Other()).ParamName, AnimatorControllerParameterType.Float);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.SignalLocal(Binding.role.Other()).ParamName);
+            AddParameter(Names.LocalContacts(Binding.role.Other()).ParamName, AnimatorControllerParameterType.Float);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.LocalContacts(Binding.role.Other()).ParamName);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
 
             peerLocal.behaviours = new StateMachineBehaviour[]
@@ -483,7 +483,7 @@ namespace net.fushizen.avrc
                 t_ => t_.AddCondition(
                     AnimatorConditionMode.Greater,
                     0.5f,
-                    Names.SignalLocal(Binding.role.Other()).ParamName
+                    Names.LocalContacts(Binding.role.Other()).ParamName
                 ),
                 pos(2, 2)
             );
@@ -492,7 +492,7 @@ namespace net.fushizen.avrc
             peerPresent.motion = init.motion;
             t = AddInstantTransition(init, peerPresent);
             AddPilotCondition(t);
-            t.AddCondition(AnimatorConditionMode.Less, 0.5f, Names.SignalLocal(Binding.role.Other()).ParamName);
+            t.AddCondition(AnimatorConditionMode.Less, 0.5f, Names.LocalContacts(Binding.role.Other()).ParamName);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
 
             peerPresent.behaviours = new StateMachineBehaviour[]
@@ -505,7 +505,7 @@ namespace net.fushizen.avrc
             };
 
             t = AddInstantTransition(peerPresent, peerLocal);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.SignalLocal(Binding.role.Other()).ParamName);
+            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.LocalContacts(Binding.role.Other()).ParamName);
 
             CreateTimeoutStates(rootStateMachine, peerPresent, init, t_ => AddPilotCondition(t_), pos(2, 5));
 

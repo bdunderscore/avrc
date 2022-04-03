@@ -3,19 +3,18 @@ using System.Diagnostics.CodeAnalysis;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-using static net.fushizen.avrc.AvrcParameters;
 using Debug = System.Diagnostics.Debug;
 using Random = UnityEngine.Random;
 
 namespace net.fushizen.avrc
 {
-    [CustomEditor(typeof(AvrcParameters))]
-    public class AvrcParametersInspector : Editor
+    [CustomEditor(typeof(AvrcLinkSpec))]
+    internal class LinkSpecInspector : Editor
     {
         private SerializedProperty _baseOffsetProp;
         private SerializedProperty _embeddedMenuProp;
         private SerializedProperty _guidProp;
-        private AvrcParametersGenerator _paramsGen;
+        private AvrcLinkSpecGenerator _paramsGen;
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
         private SerializedProperty _srcMenuProp;
@@ -25,11 +24,11 @@ namespace net.fushizen.avrc
         [SuppressMessage("ReSharper", "HeapView.DelegateAllocation")]
         private void OnEnable()
         {
-            _paramsProp = serializedObject.FindProperty(nameof(AvrcParameters.avrcParams));
-            _guidProp = serializedObject.FindProperty(nameof(AvrcParameters.guid));
-            _baseOffsetProp = serializedObject.FindProperty(nameof(AvrcParameters.baseOffset));
-            _srcMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.sourceExpressionMenu));
-            _embeddedMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
+            _paramsProp = serializedObject.FindProperty(nameof(AvrcLinkSpec.signals));
+            _guidProp = serializedObject.FindProperty(nameof(AvrcLinkSpec.guid));
+            _baseOffsetProp = serializedObject.FindProperty(nameof(AvrcLinkSpec.baseOffset));
+            _srcMenuProp = serializedObject.FindProperty(nameof(AvrcLinkSpec.sourceExpressionMenu));
+            _embeddedMenuProp = serializedObject.FindProperty(nameof(AvrcLinkSpec.embeddedExpressionsMenu));
 
             _paramsList = new ReorderableList(serializedObject, _paramsProp, true, true, true, true)
             {
@@ -38,7 +37,7 @@ namespace net.fushizen.avrc
                 elementHeightCallback = OnElementHeight
             };
 
-            _paramsGen = new AvrcParametersGenerator(target as AvrcParameters);
+            _paramsGen = new AvrcLinkSpecGenerator(target as AvrcLinkSpec);
         }
 
         public override void OnInspectorGUI()
@@ -52,7 +51,7 @@ namespace net.fushizen.avrc
 
             if (GUILayout.Button(L.AP_INSTALL))
             {
-                InstallWindow.DisplayWindow(target as AvrcParameters);
+                InstallWindow.DisplayWindow(target as AvrcLinkSpec);
             }
 
             Debug.Assert(target != null, nameof(target) + " != null");
@@ -91,7 +90,7 @@ namespace net.fushizen.avrc
                     (srcMenu != null || _srcMenuProp.objectReferenceValue != null))
                 {
                     // Clear the destination menu property so we'll clean up the cloned assets.
-                    var destMenuProp = serializedObject.FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu));
+                    var destMenuProp = serializedObject.FindProperty(nameof(AvrcLinkSpec.embeddedExpressionsMenu));
                     destMenuProp.objectReferenceValue = null;
 
                     // Force a clone and save ASAP. This avoids issues where the user immediately copies out the menu asset
@@ -101,7 +100,7 @@ namespace net.fushizen.avrc
                         if (target != null)
                         {
                             serializedObject.ApplyModifiedProperties();
-                            AvrcAssetProcessorCallbacks.initClones(target as AvrcParameters);
+                            AvrcAssetProcessorCallbacks.initClones(target as AvrcLinkSpec);
                             AssetDatabase.SaveAssets();
                         }
                     };
@@ -142,17 +141,17 @@ namespace net.fushizen.avrc
 
         private static bool ElementHasRangeProp(SerializedProperty elem)
         {
-            var tyName = GetEnumProp<AvrcParameterType>(nameof(AvrcParameter.type), elem);
+            var tyName = GetEnumProp<AvrcSignalType>(nameof(AvrcSignal.type), elem);
 
-            var hasRange = tyName == AvrcParameterType.Int;
+            var hasRange = tyName == AvrcSignalType.Int;
             return hasRange;
         }
 
         private static bool ElementIsIntLike(SerializedProperty elem)
         {
-            var tyName = GetEnumProp<AvrcParameterType>(nameof(AvrcParameter.type), elem);
+            var tyName = GetEnumProp<AvrcSignalType>(nameof(AvrcSignal.type), elem);
 
-            return tyName == AvrcParameterType.Int || tyName == AvrcParameterType.Bool;
+            return tyName == AvrcSignalType.Int || tyName == AvrcSignalType.Bool;
         }
 
         private static T GetEnumProp<T>(string name, SerializedProperty elem) where T : Enum
@@ -196,7 +195,7 @@ namespace net.fushizen.avrc
 
             if (ElementIsIntLike(element))
             {
-                var mode = element.FindPropertyRelative(nameof(AvrcParameter.syncDirection));
+                var mode = element.FindPropertyRelative(nameof(AvrcSignal.syncDirection));
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 80), mode, GUIContent.none);
             }
 

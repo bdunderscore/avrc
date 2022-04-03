@@ -19,7 +19,7 @@ namespace net.fushizen.avrc
     public class InstallWindow : EditorWindow
     {
         private VRCExpressionsMenu _installMenu;
-        private AvrcParameters _params;
+        private AvrcLinkSpec _params;
         private VRCAvatarDescriptor _targetAvatar;
         private Vector2 scrollPos = Vector2.zero;
 
@@ -41,8 +41,8 @@ namespace net.fushizen.avrc
 
             EditorGUI.BeginChangeCheck();
             _params = EditorGUILayout.ObjectField(
-                L.INST_PARAMS, _params, typeof(AvrcParameters), allowSceneObjects: false
-            ) as AvrcParameters;
+                L.INST_PARAMS, _params, typeof(AvrcLinkSpec), false
+            ) as AvrcLinkSpec;
             _targetAvatar = EditorGUILayout.ObjectField(
                 L.INST_AVATAR, _targetAvatar, typeof(VRCAvatarDescriptor), allowSceneObjects: true
             ) as VRCAvatarDescriptor;
@@ -153,7 +153,7 @@ namespace net.fushizen.avrc
         }
 
         [MenuItem("Window/bd_/AVRC Installer")]
-        internal static void DisplayWindow(AvrcParameters p = null)
+        internal static void DisplayWindow(AvrcLinkSpec p = null)
         {
             var window = GetWindow<InstallWindow>(Localizations.Inst.INST_TITLE.text);
 
@@ -169,7 +169,7 @@ namespace net.fushizen.avrc
             if (avrcParameters == null) return;
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
-            _bindingConfig.parameters = _params;
+            _bindingConfig.linkSpec = _params;
             if (_bindingConfig.writeDefaults == WriteDefaultsState.Mixed)
                 // Collapse the wave function
                 _bindingConfig.writeDefaults = WriteDefaultsState.NoWriteDefaults;
@@ -183,7 +183,7 @@ namespace net.fushizen.avrc
                 AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, oldConfig);
 
             var names = new AvrcNames(_bindingConfig);
-            new AvrcObjects(avrcParameters, names, _bindingConfig.role).CreateTriggers(_targetAvatar.gameObject);
+            new AvrcObjects(avrcParameters, names, _bindingConfig.role).CreateContacts(_targetAvatar.gameObject);
 
             if (_bindingConfig.role == Role.RX)
             {
@@ -243,7 +243,7 @@ namespace net.fushizen.avrc
                 foreach (var param in _bindingConfig.parameterMappings)
                     if (param.isSecret)
                     {
-                        var paramName = _cachedNames.ParameterMap[param.avrcParameterName];
+                        var paramName = _cachedNames.SignalMap[param.avrcParameterName];
                         if (param.remappedParameterName != null) paramName = param.remappedParameterName;
                         if (syncedParams.Contains(paramName))
                             ok = Precheck($"Parameter [{paramName}] should not be synced, as it is secret.", false);
@@ -292,7 +292,7 @@ namespace net.fushizen.avrc
             MenuCloner cloner = new MenuCloner(
                 new SerializedObject(menuRef).FindProperty(nameof(MenuReference.menu)),
                 rootTargetMenu,
-                names.ParameterMap
+                names.SignalMap
             );
 
             menuRef.menu = rootTargetMenu;
@@ -318,11 +318,11 @@ namespace net.fushizen.avrc
         private void AddParameters(VRCExpressionsMenu rootTargetMenu)
         {
             var paramToType =
-                new Dictionary<string, AvrcParameters.AvrcParameterType>();
-            foreach (var param in _params.avrcParams)
-                if (_cachedNames.ParameterMap.ContainsKey(param.name))
+                new Dictionary<string, AvrcSignalType>();
+            foreach (var param in _params.signals)
+                if (_cachedNames.SignalMap.ContainsKey(param.name))
                 {
-                    var mapped = _cachedNames.ParameterMap[param.name];
+                    var mapped = _cachedNames.SignalMap[param.name];
 
                     paramToType[mapped] = param.type;
                 }
@@ -391,7 +391,7 @@ namespace net.fushizen.avrc
                     name = mappedParam,
                     defaultValue = 0,
                     saved = false,
-                    valueType = paramToType[mappedParam] == AvrcParameters.AvrcParameterType.Bool
+                    valueType = paramToType[mappedParam] == AvrcSignalType.Bool
                         ? VRCExpressionParameters.ValueType.Bool
                         : VRCExpressionParameters.ValueType.Int
                 });
@@ -426,7 +426,7 @@ namespace net.fushizen.avrc
             _cachedNames = new AvrcNames(_params);
             var boundParams = new HashSet<string>();
             var specParams = new HashSet<string>();
-            foreach (var specParam in _params.avrcParams)
+            foreach (var specParam in _params.signals)
             {
                 specParams.Add(specParam.name);
             }

@@ -62,12 +62,12 @@ namespace net.fushizen.avrc
             get { return AssetDatabase.GetAssetPath(ContainingObject); }
         }
 
-        public static MenuCloner InitCloner(AvrcParameters avrcParameters)
+        public static MenuCloner InitCloner(AvrcLinkSpec avrcLinkSpec)
         {
             var cloner =
                 new MenuCloner(
-                    new SerializedObject(avrcParameters).FindProperty(nameof(AvrcParameters.embeddedExpressionsMenu)),
-                    avrcParameters);
+                    new SerializedObject(avrcLinkSpec).FindProperty(nameof(AvrcLinkSpec.embeddedExpressionsMenu)),
+                    avrcLinkSpec);
 
             if (cloner._notReady)
             {

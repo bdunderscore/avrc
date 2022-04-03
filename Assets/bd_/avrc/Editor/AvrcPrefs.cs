@@ -6,7 +6,7 @@ using UnityEngine;
 namespace net.fushizen.avrc
 {
     [Serializable]
-    internal enum Language
+    public enum Language
     {
         EN,
         JA
@@ -18,7 +18,7 @@ namespace net.fushizen.avrc
 
         internal static AvrcPrefs Get()
         {
-            AvrcPrefs tmp = ScriptableObject.CreateInstance<AvrcPrefs>();
+            AvrcPrefs tmp = CreateInstance<AvrcPrefs>();
             MonoScript script = MonoScript.FromScriptableObject(tmp);
             var path = AssetDatabase.GetAssetPath(script);
             var dir = Path.GetDirectoryName(Path.GetDirectoryName(path));

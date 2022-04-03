@@ -15,10 +15,10 @@ namespace net.fushizen.avrc
         {
             EditorApplication.delayCall += () =>
             {
-                foreach (var guid in AssetDatabase.FindAssets("t:AvrcParameters"))
+                foreach (var guid in AssetDatabase.FindAssets("t:" + nameof(AvrcLinkSpec)))
                 {
                     var assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                    var paramsAsset = AssetDatabase.LoadAssetAtPath<AvrcParameters>(assetPath);
+                    var paramsAsset = AssetDatabase.LoadAssetAtPath<AvrcLinkSpec>(assetPath);
                     if (paramsAsset != null)
                     {
                         initClones(paramsAsset);
@@ -35,7 +35,7 @@ namespace net.fushizen.avrc
 
             EditorApplication.delayCall += () =>
             {
-                var paramsAsset = AssetDatabase.LoadAssetAtPath<AvrcParameters>(assetPath);
+                var paramsAsset = AssetDatabase.LoadAssetAtPath<AvrcLinkSpec>(assetPath);
                 if (paramsAsset != null)
                 {
                     initClones(paramsAsset);
@@ -74,7 +74,7 @@ namespace net.fushizen.avrc
             {
                 foreach (var cloner in avrcMenuPaths.Values)
                 {
-                    if (cloner.SyncMenus((cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu))
+                    if (cloner.SyncMenus((cloner.ContainingObject as AvrcLinkSpec)?.sourceExpressionMenu))
                     {
                         pathList.Add(cloner.ContainingPath);
                     }
@@ -86,7 +86,7 @@ namespace net.fushizen.avrc
             foreach (var p in paths.Where(avrcMenuPaths.ContainsKey))
             {
                 var cloner = avrcMenuPaths[p];
-                var srcMenu = (cloner.ContainingObject as AvrcParameters)?.sourceExpressionMenu;
+                var srcMenu = (cloner.ContainingObject as AvrcLinkSpec)?.sourceExpressionMenu;
                 if (srcMenu != null) avrcMenuPaths[p].SyncMenus(srcMenu);
             }
 
@@ -94,10 +94,10 @@ namespace net.fushizen.avrc
         }
 
         /// <summary>
-        /// Examine the given avrcParams class, and ensure it is in sync with its source menus.
+        /// Examine the given signals class, and ensure it is in sync with its source menus.
         /// </summary>
         /// <param name="avrcParams"></param>
-        internal static void initClones(AvrcParameters avrcParams)
+        internal static void initClones(AvrcLinkSpec avrcParams)
         {
             var path = AssetDatabase.GetAssetPath(avrcParams);
             var cloner = MenuCloner.InitCloner(avrcParams);

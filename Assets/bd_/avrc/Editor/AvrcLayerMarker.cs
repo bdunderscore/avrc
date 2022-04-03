@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace net.fushizen.avrc
 {
@@ -16,12 +17,12 @@ namespace net.fushizen.avrc
 
     public class AvrcLayerMarker : StateMachineBehaviour
     {
-        public AvrcParameters Parameters;
+        [FormerlySerializedAs("Parameters")] public AvrcLinkSpec LinkSpec;
         public GlobalLayerType GlobalLayerType;
 
         internal static void MarkLayer(
             AnimatorStateMachine stateMachine,
-            AvrcParameters parameters = null,
+            AvrcLinkSpec linkSpec = null,
             GlobalLayerType globalLayerType = GlobalLayerType.NotGlobalLayer
         )
         {
@@ -38,7 +39,7 @@ namespace net.fushizen.avrc
             behaviour.hideFlags = HideFlags.NotEditable;
             behaviour.name = "AVRC Layer Marker";
             behaviour.GlobalLayerType = globalLayerType;
-            behaviour.Parameters = parameters;
+            behaviour.LinkSpec = linkSpec;
         }
 
         internal static bool IsAvrcLayer(AnimatorControllerLayer layer, out GlobalLayerType globalLayerType)
@@ -57,11 +58,11 @@ namespace net.fushizen.avrc
             return IsAvrcLayer(layer, out _);
         }
 
-        internal static bool IsMatchingLayer(AnimatorControllerLayer layer, AvrcParameters parameters)
+        internal static bool IsMatchingLayer(AnimatorControllerLayer layer, AvrcLinkSpec linkSpec)
         {
             return layer.stateMachine != null && (
                 layer.stateMachine.behaviours?.OfType<AvrcLayerMarker>().Any(
-                    behavior => behavior.Parameters == parameters
+                    behavior => behavior.LinkSpec == linkSpec
                 ) ?? false
             );
         }
