@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.Animations;
-using VRC.SDK3.Dynamics.Contact.Components;
 
 namespace net.fushizen.avrc
 {
@@ -40,34 +39,18 @@ namespace net.fushizen.avrc
             return clip;
         }
 
-        internal AnimationClip SignalClip(AvrcSignal param, bool isAck, int index)
-        {
-            var clip = new AnimationClip();
-
-            foreach (var bit in _names.SignalContacts(param, isAck))
-            {
-                clip.SetCurve($"{_names.ObjectPath}/{bit.ObjectName}", typeof(GameObject), "m_IsActive",
-                    AnimationCurve.Constant(0, 1, index & 1));
-                index >>= 1;
-            }
-
-            return clip;
-        }
-
-        internal AnimationClip PresenceClip(LocalState local, Role role)
+        internal AnimationClip PresenceClip(LocalState local, SignalEncoding signalEncoding)
         {
             var path = _names.ObjectPath;
             AnimationClip clip = new AnimationClip();
             clip.SetCurve(path, typeof(ParentConstraint), "m_Active", AnimationCurve.Constant(0, 1, 1));
 
-            foreach (var pilotSignal in _names.PilotContacts(role))
-                clip.SetCurve($"{_names.ObjectPath}/{pilotSignal.ObjectName}", typeof(VRCContactSender),
-                    "m_Enabled", AnimationCurve.Constant(0, 1, 1)
-                );
+            signalEncoding.AddDisableAll(_names, clip);
 
-            clip.SetCurve($"{_names.ObjectPath}/{_names.LocalContacts(role).ObjectName}", typeof(VRCContactSender),
-                "m_Enabled",
-                AnimationCurve.Constant(0, 1, local == LocalState.OwnerLocal ? 1.0f : 0.0f));
+            if (local == LocalState.OwnerLocal)
+                signalEncoding.MyPilotLocal.AddClip(_names, clip, 1);
+            else
+                signalEncoding.MyPilotNotLocal.AddClip(_names, clip, 1);
 
             // TODO: Control parameter contact activation?
             return clip;

@@ -28,6 +28,7 @@ namespace net.fushizen.avrc
 
             // Enable the constraint that places our receiver triggers at the correct location
             AddOrReplaceLayer(Names.LayerSetup, ReceiverSetupLayer());
+            AddOrReplaceLayer(Names.LayerProbe, ProbeLayer());
             // Set up a mesh to expand our bounding box locally for the transmitter
             // AddOrReplaceLayer("_AVRC_" + Names.Prefix + "_RXBounds", BoundsSetupStateMachine());
 
@@ -83,8 +84,6 @@ namespace net.fushizen.avrc
             var localDriven = new AnimatorState[values];
             var remoteDriven = new AnimatorState[localDriven.Length];
 
-            var localDrivenUnstable = new AnimatorState[values];
-
             var conditionParamName = Names.InternalParameter(signal);
             AddParameter(conditionParamName, AnimatorControllerParameterType.Float);
 
@@ -125,8 +124,6 @@ namespace net.fushizen.avrc
             {
                 localDriven[i] = stateMachine.AddState($"LD_{signal.name}_{i}",
                     pos(1, i - localDriven.Length / 2.0f));
-                localDrivenUnstable[i] = stateMachine.AddState($"LU_{signal.name}_{i}",
-                    pos(1.25f, i - localDriven.Length / 2.0f + 0.25f));
                 remoteDriven[i] = stateMachine.AddState($"RD_{signal.name}_{i}",
                     pos(3, i + 0.5f - localDriven.Length / 2.0f));
 
@@ -140,12 +137,11 @@ namespace net.fushizen.avrc
                 {
                     localDriven[i].motion = Animations.Named(
                         $"{Names.Prefix}_{signal.name}_{i}_ACK",
-                        () => Animations.SignalClip(signal, true, i)
+                        () => SignalEncoding.SignalDrivers[signal.AckSignalName][i].Clip(Names)
                     );
                 }
 
                 remoteDriven[i].motion = localDriven[i].motion;
-                localDrivenUnstable[i].motion = localDriven[i].motion;
 
                 // TODO: Set hysteresis hold?
 
@@ -159,36 +155,13 @@ namespace net.fushizen.avrc
                 notEqualsCondition(transition, i);
 
                 // Transition to receive when remote side drives a new value.
-                AddAntiSignalConditions(signal, i, false, () =>
-                {
-                    var t = AddInstantTransition(localDriven[i], localDrivenUnstable[i]);
-                    AddPilotCondition(t);
-                    if (driverIsLocal)
-                        AddIsLocalCondition(t);
-                    else
-                        t.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
-                    return t;
-                });
-
-                // Wait a moment before we commit. This helps avoid spurious transitions when one side is moving.
-                transition = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
-                AddSignalCondition(transition, signal, i, false);
-                AddPilotCondition(transition);
-
-                AddAntiSignalConditions(signal, i, false, () =>
-                {
-                    var t = AddInstantTransition(localDrivenUnstable[i], drivenByTx);
-                    AddPilotCondition(t);
-                    return t;
-                });
-
-                transition = AddInstantTransition(localDrivenUnstable[i], localDriven[i]);
-                AddPilotCondition(transition, false);
+                transition = AddInstantTransition(localDriven[i], drivenByTx);
+                SignalEncoding.SignalDrivers[signal.SignalName][i].AddOtherValueCondition(transition);
+                transition.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
 
                 // Transition back from TX driven state after receive
                 transition = AddInstantTransition(drivenByTx, remoteDriven[i]);
-                AddSignalCondition(transition, signal, i, false);
-                AddPilotCondition(transition);
+                SignalEncoding.SignalDrivers[signal.SignalName][i].AddCondition(transition);
 
                 // And back to local driven once we update the signal. This needs to be an always-true transition.
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);

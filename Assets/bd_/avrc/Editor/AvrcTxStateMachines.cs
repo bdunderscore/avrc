@@ -32,6 +32,7 @@ namespace net.fushizen.avrc
 
             CreateGlobalDefaultsLayer();
             AddOrReplaceLayer(Names.LayerSetup, TransmitterSetupLayer());
+            AddOrReplaceLayer(Names.LayerProbe, ProbeLayer());
 
             foreach (var param in LinkSpec.signals)
             {
@@ -105,7 +106,7 @@ namespace net.fushizen.avrc
                 states[i] = rootStateMachine.AddState(signal.name + "_" + i, pos(1, ybias + i));
                 states[i].motion = Animations.Named(
                     Names.Prefix + "_" + signal.name + "_" + i,
-                    () => Animations.SignalClip(signal, false, i)
+                    () => SignalEncoding.SignalDrivers[signal.SignalName][i].Clip(Names)
                 );
 
                 // TODO minimize any state transitions
@@ -186,7 +187,7 @@ namespace net.fushizen.avrc
                 triggerStates[i] = stateMachine.AddState($"Trigger[{i}]", pos(1, 1 + i));
                 triggerStates[i].motion = Animations.Named(
                     $"{Names.Prefix}_{signal.name}_{i}",
-                    () => Animations.SignalClip(signal, false, i)
+                    () => SignalEncoding.SignalDrivers[signal.SignalName][i].Clip(Names)
                 );
 
                 activeStates[i].behaviours = new StateMachineBehaviour[]
@@ -213,32 +214,32 @@ namespace net.fushizen.avrc
 
                 // Entry into passive state from rx
                 transition = AddInstantTransition(rx, passiveStates[i]);
-                AddSignalCondition(transition, signal, i, true);
-                AddPilotCondition(transition);
+                SignalEncoding.SignalDrivers[signal.AckSignalName][i].AddCondition(transition);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
 
                 // Exit from passive to rx when ack value changes
-                AddAntiSignalConditions(signal, i, true, () =>
-                {
-                    var t = AddInstantTransition(passiveStates[i], rx);
-                    AddPilotCondition(t);
-                    return t;
-                });
+                transition = AddInstantTransition(passiveStates[i], rx);
+                SignalEncoding.SignalDrivers[signal.AckSignalName][i].AddOtherValueCondition(transition);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
 
-                // Start transmitting when: Local value changes, and remote has not changed
+                // Start transmitting when: Local value changes
                 transition = AddInstantTransition(passiveStates[i], tx);
-                AddSignalCondition(transition, signal, i, true);
-                AddPilotCondition(transition);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
                 notEqualsCondition(transition, i);
 
                 // TX to active transition
                 transition = AddInstantTransition(tx, activeStates[i]);
-                AddPilotCondition(transition);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
                 equalsCondition(transition, i);
 
                 // Exit from active state when acknowledged
                 transition = AddInstantTransition(activeStates[i], passiveStates[i]);
-                AddSignalCondition(transition, signal, i, true);
-                AddPilotCondition(transition);
+                SignalEncoding.SignalDrivers[signal.AckSignalName][i].AddCondition(transition);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
+
+                // Return back to decision state if local state changed a second time
+                transition = AddInstantTransition(activeStates[i], tx);
+                notEqualsCondition(transition, i);
             }
 
             return stateMachine;

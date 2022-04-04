@@ -13,6 +13,7 @@ namespace net.fushizen.avrc
     internal abstract class AvrcLayerSetupCommon
     {
         protected const float EPSILON = 0.001f;
+        protected const string IS_LOCAL = "IsLocal";
 
         protected readonly AvrcAnimations Animations;
         protected readonly AnimatorController AnimatorController;
@@ -23,6 +24,7 @@ namespace net.fushizen.avrc
         protected readonly AvrcNames Names;
         protected readonly AvrcObjects Objects;
         private readonly ImmutableDictionary<string, SignalMapping> parameterBindings;
+        protected readonly SignalEncoding SignalEncoding;
 
         private readonly ImmutableHashSet<string> syncedParameters;
         protected readonly float Timeout;
@@ -33,6 +35,7 @@ namespace net.fushizen.avrc
             Binding = binding;
             Names = new AvrcNames(binding);
             LinkSpec = binding.linkSpec;
+            SignalEncoding = new SignalEncoding(LinkSpec, binding.role, Names.LayerPrefix);
             Timeout = Mathf.Max(1.0f, binding.timeoutSeconds);
 
             Animations = new AvrcAnimations(LinkSpec, Names);
@@ -104,57 +107,44 @@ namespace net.fushizen.avrc
             }
         }
 
-        protected void AddPilotCondition(AnimatorStateTransition t, bool present = true)
+        private void ValidateParameter(ref AnimatorControllerParameter param, AnimatorControllerParameterType ty,
+            bool? defaultBool, int? defaultInt)
         {
-            foreach (var pilot in Names.PilotContacts(Binding.role.Other()))
-            {
-                AddParameter(pilot.ParamName, AnimatorControllerParameterType.Float);
-                t.AddCondition(present ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less, 0.5f,
-                    pilot.ParamName);
-            }
+            if (param.type != ty)
+                throw new ArgumentException(
+                    $"Animator controller already has a signal named ${param.name} but with the wrong type");
+
+            if (defaultBool != null) param.defaultBool = defaultBool.Value;
+            if (defaultInt != null) param.defaultInt = defaultInt.Value;
         }
 
-        protected void AddSignalCondition(AnimatorStateTransition t, AvrcSignal signal, int index,
-            bool ack)
+        protected void AddParameter(string name, AnimatorControllerParameterType ty, bool? defaultBool = null,
+            int? defaultInt = null)
         {
-            foreach (var bit in Names.SignalContacts(signal, ack))
+            for (var i = 0; i < AnimatorController.parameters.Length; i++)
             {
-                var mode = (index & 1) == 1 ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less;
-                AddParameter(bit.ParamName, AnimatorControllerParameterType.Float);
-                t.AddCondition(mode, 0.5f, bit.ParamName);
-                index >>= 1;
-            }
-        }
-
-        protected void AddAntiSignalConditions(AvrcSignal signal, int index, bool ack,
-            TransitionProvider transitionProvider)
-        {
-            foreach (var bit in Names.SignalContacts(signal, ack))
-            {
-                var mode = (index & 1) != 1 ? AnimatorConditionMode.Greater : AnimatorConditionMode.Less;
-                var t = transitionProvider();
-                t.AddCondition(mode, 0.5f, bit.ParamName);
-                index >>= 1;
-            }
-        }
-
-        protected void AddParameter(string name, AnimatorControllerParameterType ty)
-        {
-            foreach (var param in AnimatorController.parameters)
-            {
-                if (param.name == name)
+                if (AnimatorController.parameters[i].name == name)
                 {
-                    if (param.type != ty)
-                    {
-                        throw new ArgumentException(
-                            $"Animator controller already has a signal named ${name} but with the wrong type");
-                    }
-
+                    var param = AnimatorController.parameters[i];
+                    ValidateParameter(ref param, ty, defaultBool, defaultInt);
+                    AnimatorController.parameters[i] = param;
                     return;
                 }
             }
 
-            AnimatorController.AddParameter(name, ty);
+            var parameters =
+                new AnimatorControllerParameter[AnimatorController.parameters.Length + 1];
+            Array.Copy(AnimatorController.parameters, parameters, AnimatorController.parameters.Length);
+
+            parameters[parameters.Length - 1] = new AnimatorControllerParameter
+            {
+                name = name,
+                type = ty,
+                defaultBool = defaultBool ?? false,
+                defaultInt = defaultInt ?? 0
+            };
+
+            AnimatorController.parameters = parameters;
         }
 
         protected void CreateParameterLayer(AvrcSignal signal)
@@ -414,10 +404,18 @@ namespace net.fushizen.avrc
             AddParameter(Names.PubParamPeerLocal, AnimatorControllerParameterType.Bool);
             AddParameter(Names.PubParamPeerPresent, AnimatorControllerParameterType.Bool);
 
+            foreach (var collider in SignalEncoding.AllContacts)
+                if (!collider.IsSender)
+                {
+                    //AddParameter(collider.Parameter, AnimatorControllerParameterType.Bool, defaultBool: false);
+                    AddParameter(collider.Parameter, AnimatorControllerParameterType.Float, false);
+                    AddParameter(collider.SenseParameter, AnimatorControllerParameterType.Int, defaultInt: 255);
+                }
+
             var init = rootStateMachine.AddState("Init", pos(1, 3.5f));
             init.motion = Animations.Named(
                 animPrefix + "Init",
-                () => Animations.PresenceClip(AvrcAnimations.LocalState.Unknown, Binding.role)
+                () => Animations.PresenceClip(AvrcAnimations.LocalState.Unknown, SignalEncoding)
             );
             init.behaviours = new StateMachineBehaviour[]
             {
@@ -431,7 +429,7 @@ namespace net.fushizen.avrc
             var ownerLocal = rootStateMachine.AddState("OwnerLocal", pos(1, 0));
             ownerLocal.motion = Animations.Named(
                 animPrefix + "OwnerLocal",
-                () => Animations.PresenceClip(AvrcAnimations.LocalState.OwnerLocal, Binding.role)
+                () => Animations.PresenceClip(AvrcAnimations.LocalState.OwnerLocal, SignalEncoding)
             );
             var t = AddInstantTransition(init, ownerLocal);
             AddIsLocalCondition(t);
@@ -455,20 +453,20 @@ namespace net.fushizen.avrc
                 )
             };
             t = AddInstantTransition(ownerLocal, ownerLocalTxPresent);
-            AddPilotCondition(t);
+            SignalEncoding.TheirPilotLocal.Target.AddPresenceCondition(t);
 
-            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal, t_ => AddPilotCondition(t_),
+            CreateTimeoutStates(rootStateMachine, ownerLocalTxPresent, ownerLocal,
+                SignalEncoding.TheirPilotLocal.Target.AddPresenceCondition,
                 pos(2, 1));
 
             var peerLocal = rootStateMachine.AddState("PeerLocal", pos(2, 3));
             peerLocal.motion = Animations.Named(
                 animPrefix + "PeerLocal",
-                () => Animations.PresenceClip(AvrcAnimations.LocalState.PeerLocal, Binding.role)
+                () => Animations.PresenceClip(AvrcAnimations.LocalState.PeerLocal, SignalEncoding)
             );
             t = AddInstantTransition(init, peerLocal);
-            AddParameter(Names.LocalContacts(Binding.role.Other()).ParamName, AnimatorControllerParameterType.Float);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.LocalContacts(Binding.role.Other()).ParamName);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
+            SignalEncoding.TheirPilotLocal.AddCondition(t);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
 
             peerLocal.behaviours = new StateMachineBehaviour[]
             {
@@ -480,20 +478,15 @@ namespace net.fushizen.avrc
             };
 
             CreateTimeoutStates(rootStateMachine, peerLocal, init,
-                t_ => t_.AddCondition(
-                    AnimatorConditionMode.Greater,
-                    0.5f,
-                    Names.LocalContacts(Binding.role.Other()).ParamName
-                ),
+                SignalEncoding.TheirPilotLocal.AddCondition,
                 pos(2, 2)
             );
 
             var peerPresent = rootStateMachine.AddState("PeerPresent", pos(2, 4));
             peerPresent.motion = init.motion;
             t = AddInstantTransition(init, peerPresent);
-            AddPilotCondition(t);
-            t.AddCondition(AnimatorConditionMode.Less, 0.5f, Names.LocalContacts(Binding.role.Other()).ParamName);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, "IsLocal");
+            SignalEncoding.TheirPilotNotLocal.AddCondition(t);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
 
             peerPresent.behaviours = new StateMachineBehaviour[]
             {
@@ -505,11 +498,152 @@ namespace net.fushizen.avrc
             };
 
             t = AddInstantTransition(peerPresent, peerLocal);
-            t.AddCondition(AnimatorConditionMode.Greater, 0.5f, Names.LocalContacts(Binding.role.Other()).ParamName);
+            SignalEncoding.TheirPilotLocal.AddCondition(t);
 
-            CreateTimeoutStates(rootStateMachine, peerPresent, init, t_ => AddPilotCondition(t_), pos(2, 5));
+            CreateTimeoutStates(rootStateMachine, peerPresent, init, SignalEncoding.TheirPilotNotLocal.AddCondition,
+                pos(2, 5));
 
             return rootStateMachine;
+        }
+
+        /// <summary>
+        ///     Generates a layer which will probe for received values.
+        /// </summary>
+        /// <returns></returns>
+        protected AnimatorStateMachine ProbeLayer()
+        {
+            var stateMachine = new AnimatorStateMachine();
+
+            stateMachine.entryPosition = pos(-1, 0);
+            stateMachine.anyStatePosition = pos(-1, 2);
+            stateMachine.exitPosition = pos(-1, -1);
+
+            var standbyPresent = stateMachine.AddState("Standby:Present:Prep", pos(-1.5f, -0.5f));
+            standbyPresent.motion = Animations.Named("Standby:Present", () =>
+            {
+                var _clip = new AnimationClip();
+                SignalEncoding.TheirPilotNotLocal.AddClip(Names, _clip, 0.5f);
+                return _clip;
+            });
+            standbyPresent.behaviours = new[] {ParameterDriver(false, SignalEncoding.TheirPilotNotLocal.DelayDriver)};
+
+            var standbyPresentCheck = stateMachine.AddState("Standby:Present:Check", pos(-1.5f, 0.5f));
+            standbyPresentCheck.motion = standbyPresent.motion;
+            standbyPresentCheck.behaviours = new[]
+                {ParameterDriver(false, SignalEncoding.TheirPilotNotLocal.ProbeDriver)};
+
+            var t = standbyPresent.AddTransition(standbyPresentCheck);
+            t.exitTime = 1;
+            t.hasExitTime = true;
+            t.hasFixedDuration = false;
+
+            var standbyLocal = stateMachine.AddState("Standby:Local:Prep", pos(-0.5f, -0.5f));
+            standbyLocal.motion = Animations.Named("Standby:Local", () =>
+            {
+                var _clip = new AnimationClip();
+                SignalEncoding.TheirPilotLocal.AddClip(Names, _clip, 0.5f);
+                return _clip;
+            });
+            standbyLocal.behaviours = new[] {ParameterDriver(false, SignalEncoding.TheirPilotLocal.DelayDriver)};
+
+            var standbyLocalCheck = stateMachine.AddState("Standby:Local:Check", pos(-0.5f, 0.5f));
+            standbyLocalCheck.motion = standbyLocal.motion;
+            standbyLocalCheck.behaviours = new[] {ParameterDriver(false, SignalEncoding.TheirPilotLocal.ProbeDriver)};
+
+            t = standbyLocal.AddTransition(standbyLocalCheck);
+            t.exitTime = 1;
+            t.hasExitTime = true;
+            t.hasFixedDuration = false;
+
+            t = AddInstantTransition(standbyLocalCheck, standbyPresent);
+            //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotLocal.Target.Parameter);
+            t.AddCondition(AnimatorConditionMode.Less, 0.5f, SignalEncoding.TheirPilotLocal.Target.Parameter);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+
+            t = AddInstantTransition(standbyPresentCheck, standbyLocal);
+            //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotNotLocal.Target.Parameter);
+            t.AddCondition(AnimatorConditionMode.Less, 0.5f, SignalEncoding.TheirPilotNotLocal.Target.Parameter);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+
+            var shutdownState = stateMachine.AddState("Shutdown", pos(-1, -1));
+            t = AddInstantTransition(shutdownState, standbyPresent);
+            t.AddCondition(AnimatorConditionMode.If, 0, IS_LOCAL);
+            t = AddInstantTransition(shutdownState, standbyPresent);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+
+            var resetBehaviour = SignalEncoding.ProbePhases[0].BuildProbeDriver(false);
+            shutdownState.behaviours = new StateMachineBehaviour[] {resetBehaviour};
+
+            var nStates = SignalEncoding.ProbePhases.Count * 3;
+            float radius = 25 * nStates;
+            var cpos = Vector3.up * radius;
+            var rot = Quaternion.Euler(0, 0, 360.0f / nStates);
+
+            var allStates = new List<AnimatorState>();
+            var probeStates = new List<AnimatorState>();
+            AnimatorState lastState = null;
+            foreach (var probePhase in SignalEncoding.ProbePhases)
+            {
+                var i = probeStates.Count;
+
+                var curStateProbe = stateMachine.AddState("Probe: " + i, cpos);
+                cpos = rot * cpos;
+                curStateProbe.behaviours = new StateMachineBehaviour[] {probePhase.BuildProbeDriver(false)};
+                curStateProbe.motion = Animations.Named("Probe: " + i, () => probePhase.ProbeClip(Names));
+                allStates.Add(curStateProbe);
+
+                var curStateSample = stateMachine.AddState("Sample: " + i, cpos);
+                cpos = rot * cpos;
+                curStateSample.motion = curStateProbe.motion;
+                curStateSample.behaviours = new StateMachineBehaviour[] {probePhase.BuildProbeDriver(true)};
+                allStates.Add(curStateSample);
+
+                var curStateSample2 = stateMachine.AddState("Sample2: " + i, cpos);
+                cpos = rot * cpos;
+                curStateSample2.motion = curStateProbe.motion;
+                allStates.Add(curStateSample2);
+
+                t = curStateProbe.AddTransition(curStateSample);
+                t.exitTime = 1;
+                t.hasExitTime = true;
+                t.hasFixedDuration = false;
+
+                t = AddInstantTransition(curStateSample, curStateSample2);
+                t.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamEitherLocal);
+                t = AddInstantTransition(curStateSample, curStateSample2);
+                t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
+
+                probeStates.Add(curStateProbe);
+
+                if (lastState == null)
+                {
+                    // Add entry transitions
+                    t = AddInstantTransition(standbyLocalCheck, curStateProbe);
+                    t.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamEitherLocal);
+
+                    t = AddInstantTransition(standbyPresentCheck, curStateProbe);
+                    t.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamEitherLocal);
+                }
+                else
+                {
+                    // Always-true condition
+                    t = AddInstantTransition(lastState, curStateProbe);
+                    t.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamEitherLocal);
+                    t = AddInstantTransition(lastState, curStateProbe);
+                    t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
+                }
+
+                lastState = curStateSample2;
+            }
+
+            // Final state exit and loop
+            t = AddInstantTransition(lastState, probeStates.First());
+            t.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamEitherLocal);
+
+            t = AddInstantTransition(lastState, shutdownState);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
+
+            return stateMachine;
         }
 
         private void CreateTimeoutStates(AnimatorStateMachine rootStateMachine,
@@ -563,8 +697,8 @@ namespace net.fushizen.avrc
 
         protected void AddIsLocalCondition(AnimatorStateTransition transition, bool isLocal = true)
         {
-            AddParameter("IsLocal", AnimatorControllerParameterType.Bool);
-            transition.AddCondition(isLocal ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot, 1, "IsLocal");
+            AddParameter(IS_LOCAL, AnimatorControllerParameterType.Bool);
+            transition.AddCondition(isLocal ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot, 1, IS_LOCAL);
         }
 
         protected Vector3 pos(float x, float y)

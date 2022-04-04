@@ -17,6 +17,7 @@ namespace net.fushizen.avrc
 
         private readonly AvrcNames _names;
         private readonly Role _role;
+        private readonly SignalEncoding _signalEncoding;
         private GameObject _baseObject;
         private Vector3 _pos;
 
@@ -24,25 +25,23 @@ namespace net.fushizen.avrc
         {
             _linkSpec = linkSpec;
             _names = names;
+            _signalEncoding = new SignalEncoding(linkSpec, role, names.LayerPrefix);
             _role = role;
             _pos = new Vector3();
         }
 
         private ContactBase CreateContactPair(
-            ContactSpec contactSpec,
-            bool defaultActive = true,
-            Role sender = Role.TX
-        )
+            ContactSpec contactSpec)
         {
             var obj = new GameObject();
-            obj.name = contactSpec.ObjectName;
+            obj.name = contactSpec.Name;
             obj.transform.parent = _baseObject.transform;
-            obj.transform.localPosition = _pos;
-            _pos += new Vector3(0, Separation, 0);
+            obj.transform.localPosition = Vector3.zero;
+
             Undo.RegisterCreatedObjectUndo(obj, "AVRC setup");
 
             ContactBase contact;
-            if (sender == _role)
+            if (contactSpec.IsSender)
             {
                 contact = obj.AddComponent<VRCContactSender>();
             }
@@ -50,16 +49,16 @@ namespace net.fushizen.avrc
             {
                 var receiver = obj.AddComponent<VRCContactReceiver>();
                 contact = receiver;
-                receiver.parameter = contactSpec.ParamName;
+                receiver.parameter = contactSpec.Parameter;
                 receiver.receiverType = ContactReceiver.ReceiverType.Constant;
             }
 
             contact.shapeType = ContactBase.ShapeType.Sphere;
             contact.radius = Diameter * 0.5f;
-            contact.position = _pos;
-            contact.collisionTags = AvrcLicenseManager.MungeContactTag(contactSpec.TagName, sender == _role);
+            contact.position = contactSpec.BasePosition;
+            contact.collisionTags = contactSpec.CollisionTags;
 
-            contact.enabled = sender != _role || defaultActive;
+            contact.enabled = false;
 
             return contact;
         }
@@ -68,29 +67,10 @@ namespace net.fushizen.avrc
         {
             _baseObject = BuildConstraintBase(avatar, _names.Prefix);
 
-            var rxPilots = _names.PilotContacts(Role.RX);
-            var txPilots = _names.PilotContacts(Role.TX);
-
-            CreateContactPair(rxPilots[0], false, Role.RX);
-            CreateContactPair(txPilots[0], false);
-
-            foreach (var param in _linkSpec.signals)
+            foreach (var contact in _signalEncoding.AllContacts)
             {
-                var signals = _names.SignalContacts(param, false);
-                foreach (var signal in signals) CreateContactPair(signal);
-
-                if (param.syncDirection == SyncDirection.TwoWay)
-                {
-                    var acks = _names.SignalContacts(param, true);
-                    foreach (var signal in acks) CreateContactPair(signal, sender: Role.RX);
-                }
+                CreateContactPair(contact);
             }
-
-            CreateContactPair(_names.LocalContacts(Role.RX), false, Role.RX);
-            CreateContactPair(_names.LocalContacts(Role.TX), false);
-
-            CreateContactPair(rxPilots[1], false, Role.RX);
-            CreateContactPair(txPilots[1], false);
         }
 
         private GameObject BuildConstraintBase(

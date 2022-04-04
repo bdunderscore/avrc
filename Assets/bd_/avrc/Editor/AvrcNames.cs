@@ -2,22 +2,6 @@
 
 namespace net.fushizen.avrc
 {
-    internal class ContactSpec
-    {
-        private readonly AvrcNames _names;
-        private readonly string _suffix;
-
-        public ContactSpec(AvrcNames names, string suffix)
-        {
-            _names = names;
-            _suffix = suffix;
-        }
-
-        internal string ObjectName => $"_AVRCI_{_names.Prefix}_{_suffix}";
-        internal string ParamName => ObjectName;
-        internal string TagName => $"_AVRCI_{_names.LinkGUID}_{_suffix}";
-    }
-
     internal class AvrcNames
     {
         internal readonly string LinkGUID;
@@ -51,6 +35,7 @@ namespace net.fushizen.avrc
         internal string ObjectPath => $"AVRC/{Prefix}";
         internal string LayerPrefix => $"_AVRC_{Prefix}";
         internal string LayerSetup => $"{LayerPrefix}_Setup";
+        internal string LayerProbe => $"{LayerPrefix}_Probe";
 
         internal string PubParamPrefix => $"AVRC_{Prefix}_";
         internal string ParamPrefix => $"_AVRCI_{Prefix}_";
@@ -72,40 +57,6 @@ namespace net.fushizen.avrc
         public string ParameterLayerName(AvrcSignal signal)
         {
             return $"_AVRC_{Prefix}_{signal.name}";
-        }
-
-        public ContactSpec[] PilotContacts(Role role)
-        {
-            var rolePrefix = role == Role.RX ? "RX" : "TX";
-            return new[]
-            {
-                new ContactSpec(this, role + "Pilot1"),
-                new ContactSpec(this, role + "Pilot2")
-            };
-        }
-
-        public ContactSpec LocalContacts(Role role)
-        {
-            return new ContactSpec(this, role + "Local");
-        }
-
-        public ContactSpec[] SignalContacts(AvrcSignal signal, bool ack)
-        {
-            var suffix = ack ? "$ACK" : "";
-            var values = signal.type == AvrcSignalType.Bool
-                ? 2
-                : signal.maxVal - signal.minVal + 1;
-
-            var signals = new List<ContactSpec>();
-            var bits = 0;
-            while (values > 0)
-            {
-                signals.Add(new ContactSpec(this, $"B{bits}_{signal.name}{suffix}"));
-                bits++;
-                values = values >> 1;
-            }
-
-            return signals.ToArray();
         }
     }
 }

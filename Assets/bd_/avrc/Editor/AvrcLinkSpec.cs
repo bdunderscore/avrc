@@ -60,6 +60,9 @@ namespace net.fushizen.avrc
         /// </summary>
         public int maxVal;
 
+        internal string SignalName => $"S${name}";
+        internal string AckSignalName => $"A${name}";
+
         /// <summary>
         ///     Name of the parameter used to trigger the non-local clone of the avatar to transmit on a two-way signal.
         /// </summary>
