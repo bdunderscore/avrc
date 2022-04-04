@@ -11,6 +11,11 @@ namespace net.fushizen.avrc
     [CustomEditor(typeof(AvrcLicenseAsset))]
     internal class AvrcLicenseEditor : Editor
     {
+        private void OnEnable()
+        {
+            AvrcLicenseManager.ClearCache();
+        }
+
         public override void OnInspectorGUI()
         {
             switch (AvrcLicenseManager.GetLicenseState())

@@ -24,7 +24,23 @@ namespace net.fushizen.avrc
     {
         private const string ident = "Copyright (c) bd_ : AVRC. Don't be naughty.";
 
+        private static LicenseState? CachedLicenseState;
+
         internal static LicenseState GetLicenseState()
+        {
+            if (CachedLicenseState.HasValue) return CachedLicenseState.Value;
+
+            CachedLicenseState = CheckLicense();
+
+            return CachedLicenseState.Value;
+        }
+
+        internal static void ClearCache()
+        {
+            CachedLicenseState = null;
+        }
+
+        private static LicenseState CheckLicense()
         {
             var licenses = AssetDatabase.FindAssets("t:AvrcLicenseAsset");
             if (licenses.Length == 0) return LicenseState.Unlicensed;

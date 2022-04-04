@@ -475,6 +475,7 @@ namespace net.fushizen.avrc
 
         void InitSavedState()
         {
+            AvrcLicenseManager.ClearCache();
             _remapList = null;
 
             if (_params == null || _targetAvatar == null)
