@@ -459,14 +459,37 @@ namespace net.fushizen.avrc
                 SignalEncoding.TheirPilotLocal.Target.AddPresenceCondition,
                 pos(2, 1));
 
-            var peerLocal = rootStateMachine.AddState("PeerLocal", pos(2, 3));
+            var peerLocalCheck0 = rootStateMachine.AddState("PeerLocalCheck0", pos(2, 3));
+            var peerLocalCheck1 = rootStateMachine.AddState("PeerLocalCheck1", pos(3, 3));
+            peerLocalCheck0.motion = peerLocalCheck1.motion = init.motion;
+            // 1s is too short for the slow probe we use prior to connection establishment, so wait 2s here.
+            peerLocalCheck0.speed = peerLocalCheck1.speed = ((AnimationClip) init.motion).length / 2.0f;
+
+            t = AddInstantTransition(init, peerLocalCheck0);
+            SignalEncoding.TheirPilotLocal.AddCondition(t);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+            // Verify that we transition true -> false -> true before accepting the peer-is-local condition
+            t = AddInstantTransition(peerLocalCheck0, peerLocalCheck1);
+            t.AddCondition(AnimatorConditionMode.Less, 0.5f, SignalEncoding.TheirPilotLocal.Target.Parameter);
+
+            var peerLocal = rootStateMachine.AddState("PeerLocal", pos(4, 3));
             peerLocal.motion = Animations.Named(
                 animPrefix + "PeerLocal",
                 () => Animations.PresenceClip(AvrcAnimations.LocalState.PeerLocal, SignalEncoding)
             );
-            t = AddInstantTransition(init, peerLocal);
+            t = AddInstantTransition(peerLocalCheck1, peerLocal);
             SignalEncoding.TheirPilotLocal.AddCondition(t);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+
+            // Timeout transitions for peerLocalCheck states
+            t = peerLocalCheck0.AddTransition(init);
+            t.exitTime = 1f;
+            t.hasExitTime = true;
+            t.duration = 0;
+
+            t = peerLocalCheck1.AddTransition(init);
+            t.exitTime = 1f;
+            t.hasExitTime = true;
+            t.duration = 0;
 
             peerLocal.behaviours = new StateMachineBehaviour[]
             {
@@ -497,7 +520,7 @@ namespace net.fushizen.avrc
                 )
             };
 
-            t = AddInstantTransition(peerPresent, peerLocal);
+            t = AddInstantTransition(peerPresent, peerLocalCheck0);
             SignalEncoding.TheirPilotLocal.AddCondition(t);
 
             CreateTimeoutStates(rootStateMachine, peerPresent, init, SignalEncoding.TheirPilotNotLocal.AddCondition,
@@ -557,12 +580,10 @@ namespace net.fushizen.avrc
 
             t = AddInstantTransition(standbyLocalCheck, standbyPresent);
             //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotLocal.Target.Parameter);
-            t.AddCondition(AnimatorConditionMode.Less, 0.5f, SignalEncoding.TheirPilotLocal.Target.Parameter);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
 
             t = AddInstantTransition(standbyPresentCheck, standbyLocal);
             //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotNotLocal.Target.Parameter);
-            t.AddCondition(AnimatorConditionMode.Less, 0.5f, SignalEncoding.TheirPilotNotLocal.Target.Parameter);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
 
             var shutdownState = stateMachine.AddState("Shutdown", pos(-1, -1));
