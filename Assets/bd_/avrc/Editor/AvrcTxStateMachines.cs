@@ -129,6 +129,7 @@ namespace net.fushizen.avrc
         )
         {
             var idleMotion = AvrcAssets.EmptyClip();
+            AddParameter(Names.PubParamForceTransmit, AnimatorControllerParameterType.Bool, false);
 
             AnimatorStateMachine stateMachine = new AnimatorStateMachine();
 
@@ -227,15 +228,21 @@ namespace net.fushizen.avrc
                 transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
                 notEqualsCondition(transition, i);
 
+                // or when force TX is enabled
+                transition = AddInstantTransition(passiveStates[i], tx);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
+                transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamForceTransmit);
+
                 // TX to active transition
                 transition = AddInstantTransition(tx, activeStates[i]);
                 transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
                 equalsCondition(transition, i);
 
-                // Exit from active state when acknowledged
+                // Exit from active state when acknowledged, provided we're not in force TX mode
                 transition = AddInstantTransition(activeStates[i], passiveStates[i]);
                 SignalEncoding.SignalDrivers[signal.AckSignalName][i].AddCondition(transition);
                 transition.AddCondition(AnimatorConditionMode.If, 0, Names.PubParamPeerPresent);
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamForceTransmit);
 
                 // Return back to decision state if local state changed a second time
                 transition = AddInstantTransition(activeStates[i], tx);

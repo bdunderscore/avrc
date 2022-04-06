@@ -43,6 +43,7 @@ namespace net.fushizen.avrc
         internal string PubParamEitherLocal => $"AVRC_{Prefix}_EitherLocal";
         internal string PubParamPeerPresent => $"AVRC_{Prefix}_PeerPresent";
         internal string PubParamPeerLocal => $"AVRC_{Prefix}_PeerLocal";
+        internal string PubParamForceTransmit => $"AVRC_{Prefix}_ForceTx";
 
         internal string SignalToParam(AvrcSignal signal)
         {
