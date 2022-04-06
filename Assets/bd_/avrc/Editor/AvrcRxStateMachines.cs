@@ -122,6 +122,8 @@ namespace net.fushizen.avrc
 
             for (var i = 0; i < localDriven.Length; i++)
             {
+                var signalDriver = SignalEncoding.SignalDrivers[signal.SignalName][i];
+
                 localDriven[i] = stateMachine.AddState($"LD_{signal.name}_{i}",
                     pos(1, i - localDriven.Length / 2.0f));
                 remoteDriven[i] = stateMachine.AddState($"RD_{signal.name}_{i}",
@@ -156,21 +158,37 @@ namespace net.fushizen.avrc
 
                 // Transition to receive when remote side drives a new value.
                 transition = AddInstantTransition(localDriven[i], drivenByTx);
-                SignalEncoding.SignalDrivers[signal.SignalName][i].AddOtherValueCondition(transition);
+                signalDriver.AddOtherValueCondition(transition);
                 transition.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
 
                 // Transition back from TX driven state after receive
                 transition = AddInstantTransition(drivenByTx, remoteDriven[i]);
-                SignalEncoding.SignalDrivers[signal.SignalName][i].AddCondition(transition);
+                signalDriver.AddCondition(transition);
 
-                // And back to local driven once we update the signal. This needs to be an always-true transition.
+                // And back to local driven once the TX side stops transmitting. 
                 transition = AddInstantTransition(remoteDriven[i], localDriven[i]);
-                transition.AddCondition(AnimatorConditionMode.If, 0, presenceSignal);
-                transition = AddInstantTransition(remoteDriven[i], localDriven[i]);
+                transition.AddCondition(AnimatorConditionMode.Less, 0.5f, signalDriver.Target.Parameter);
+                transition.AddCondition(AnimatorConditionMode.Equals, signalDriver.SenseIndex,
+                    signalDriver.Target.SenseParameter);
+
+                // Go back to drivenByTx if we get a different received value
+                transition = AddInstantTransition(remoteDriven[i], drivenByTx);
+                transition.AddCondition(AnimatorConditionMode.Greater, 0.5f, signalDriver.Target.Parameter);
+                transition.AddCondition(AnimatorConditionMode.NotEqual, signalDriver.SenseIndex,
+                    signalDriver.Target.SenseParameter);
+
+                // If the local side tries to change the parameter before the TX side unlocks, reset it
+                transition = AddInstantTransition(remoteDriven[i], remoteDriven[i]);
+                notEqualsCondition(transition, i);
+
+                // Deactivation transitions
+                transition = AddInstantTransition(localDriven[i], startup);
                 transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
 
-                // Deactivation transition
-                transition = AddInstantTransition(localDriven[i], startup);
+                transition = AddInstantTransition(remoteDriven[i], startup);
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
+
+                transition = AddInstantTransition(drivenByTx, startup);
                 transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
             }
 

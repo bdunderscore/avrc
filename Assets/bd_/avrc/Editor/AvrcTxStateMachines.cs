@@ -138,6 +138,10 @@ namespace net.fushizen.avrc
 
             var disconnected = stateMachine.AddState("Disconnected", pos(2, 0));
             disconnected.motion = idleMotion;
+            disconnected.behaviours = new StateMachineBehaviour[]
+            {
+                ParameterDriver(true, (signal.TxSignalFlag(Names), 0))
+            };
 
             var transition = AddInstantAnyTransition(stateMachine, disconnected);
             transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
@@ -156,12 +160,20 @@ namespace net.fushizen.avrc
             AddParameter(signal.TxSignalFlag(Names), AnimatorControllerParameterType.Bool);
             transition = AddInstantTransition(disconnected, triggerEntry);
             transition.AddCondition(AnimatorConditionMode.If, 1, signal.TxSignalFlag(Names));
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
             transition = AddInstantTransition(triggerEntry, disconnected);
             transition.AddCondition(AnimatorConditionMode.IfNot, 0, signal.TxSignalFlag(Names));
 
             var tx = stateMachine.AddState("Transmit", pos(5, 0));
             tx.motion = idleMotion;
             tx.behaviours = new StateMachineBehaviour[] {ParameterDriver(signal.TxSignalFlag(Names), 0)};
+
+            transition = tx.AddExitTransition();
+            transition.duration = 0;
+            transition.hasExitTime = false;
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamPeerPresent);
+
+            stateMachine.exitPosition = pos(7, 0);
 
             var ybias_owner = 0.5f - values / 2.0f;
 
@@ -247,6 +259,12 @@ namespace net.fushizen.avrc
                 // Return back to decision state if local state changed a second time
                 transition = AddInstantTransition(activeStates[i], tx);
                 notEqualsCondition(transition, i);
+
+                // Exit when disconnected
+                transition = activeStates[i].AddExitTransition();
+                transition.duration = 0;
+                transition.hasExitTime = false;
+                transition.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamPeerPresent);
             }
 
             return stateMachine;

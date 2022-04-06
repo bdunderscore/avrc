@@ -580,11 +580,11 @@ namespace net.fushizen.avrc
 
             t = AddInstantTransition(standbyLocalCheck, standbyPresent);
             //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotLocal.Target.Parameter);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
 
             t = AddInstantTransition(standbyPresentCheck, standbyLocal);
             //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotNotLocal.Target.Parameter);
-            t.AddCondition(AnimatorConditionMode.IfNot, 0, IS_LOCAL);
+            t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
 
             var shutdownState = stateMachine.AddState("Shutdown", pos(-1, -1));
             t = AddInstantTransition(shutdownState, standbyPresent);
