@@ -20,12 +20,12 @@ namespace net.fushizen.avrc
     {
         private VRCExpressionsMenu _installMenu;
         private AvrcLinkSpec _params;
+        private Vector2 _scrollPos = Vector2.zero;
+
+        private bool _showDetails;
         private VRCAvatarDescriptor _targetAvatar;
-        private Vector2 scrollPos = Vector2.zero;
 
-        private bool showDetails = false;
-
-        private Localizations L => Localizations.Inst;
+        private static Localizations L => Localizations.Inst;
 
         private void OnEnable()
         {
@@ -36,7 +36,7 @@ namespace net.fushizen.avrc
         {
             if (_bindingConfigSO == null || _bindingConfig == null) InitSavedState();
 
-            scrollPos = GUILayout.BeginScrollView(scrollPos);
+            _scrollPos = GUILayout.BeginScrollView(_scrollPos);
             Localizations.SwitchLanguageButton();
 
             EditorGUI.BeginChangeCheck();
@@ -83,8 +83,8 @@ namespace net.fushizen.avrc
                 _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults)).enumValueIndex = (int) newEnumValue;
             }
 
-            showDetails = EditorGUILayout.Foldout(showDetails, L.INST_ADV_SETTINGS);
-            if (showDetails)
+            _showDetails = EditorGUILayout.Foldout(_showDetails, L.INST_ADV_SETTINGS);
+            if (_showDetails)
             {
                 using (new EditorGUI.DisabledGroupScope(_bindingConfig == null))
                 {
@@ -124,7 +124,7 @@ namespace net.fushizen.avrc
 
             bool hasThisAvrc = (_params != null && _targetAvatar != null)
                                && AvrcUninstall.HasAvrcConfiguration(_targetAvatar, _params);
-            bool hasAnyAvrc = _targetAvatar != null && AvrcUninstall.HasAvrcConfiguration(_targetAvatar, null);
+            var hasAnyAvrc = _targetAvatar != null && AvrcUninstall.HasAvrcConfiguration(_targetAvatar);
 
             using (new EditorGUI.DisabledGroupScope(!hasThisAvrc))
             {
@@ -139,7 +139,7 @@ namespace net.fushizen.avrc
             {
                 if (GUILayout.Button(L.INST_UNINSTALL_ALL))
                 {
-                    AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar, null);
+                    AvrcUninstall.RemoveAvrcConfiguration(_targetAvatar);
                 }
             }
 
@@ -195,28 +195,36 @@ namespace net.fushizen.avrc
                 InstallMenu();
             }
 
+            AddParameters(names);
+
             AvrcStateSaver.SaveState(_targetAvatar, _bindingConfig);
         }
 
         private bool IsReadyToInstall()
         {
-            bool ok = true;
-
             if (_bindingConfigSO == null || _bindingConfigSO.targetObject == null) InitSavedState();
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
 
             if (AvrcLicenseManager.GetLicenseState() != LicenseState.Ok)
                 EditorGUILayout.HelpBox(L.INST_UNLICENSED, MessageType.Warning);
-            ok = ok && Precheck(L.INST_ERR_NO_ROLE, _bindingConfig.role != Role.Init);
+
+            // Basic prechecks - we bail out early if these break
+
+            var ok = Precheck(L.INST_ERR_NO_ROLE, _bindingConfig.role != Role.Init);
             ok = ok && Precheck(L.INST_ERR_NO_PARAMS, _params != null);
             ok = ok && Precheck(L.INST_ERR_NO_AVATAR, _targetAvatar != null);
             ok = ok && Precheck(L.INST_ERR_NO_FX, AvrcAnimatorUtils.FindFxLayer(_targetAvatar) != null);
-            ok = ok && Precheck(L.INST_MENU_FULL, !IsTargetMenuFull());
-            ok = ok && Precheck(string.Format(L.INST_ERR_DUP_PARAM, duplicateName), duplicateName == null);
+
+            ok = ok && _cachedNames != null;
+            if (!ok) return false;
+
+            // For the following checks we allow multiple to be displayed
+            ok &= Precheck(L.INST_MENU_FULL, !IsTargetMenuFull());
+            ok &= Precheck(string.Format(L.INST_ERR_DUP_PARAM, _duplicateName), _duplicateName == null);
             if (_bindingConfig.role == Role.RX)
             {
-                ok = ok && Precheck(string.Format(L.INST_ERR_BAD_TIMEOUT, _bindingConfig.timeoutSeconds),
+                ok &= Precheck(string.Format(L.INST_ERR_BAD_TIMEOUT, _bindingConfig.timeoutSeconds),
                     _bindingConfig.timeoutSeconds > 1.0f);
             }
 
@@ -231,25 +239,23 @@ namespace net.fushizen.avrc
                     L.INST_ERR_WD_MISMATCH,
                     MessageType.Warning);
 
-            if (_targetAvatar != null && _cachedNames != null)
+            if (_targetAvatar == null || _cachedNames == null) return false;
+
+            if (_targetAvatar.expressionParameters == null)
             {
-                if (_targetAvatar.expressionParameters == null)
-                {
-                    Precheck(L.INST_ERR_NO_EXP_PARAMS, false);
-                    return false;
-                }
+                Precheck(L.INST_ERR_NO_EXP_PARAMS, false);
+                return false;
+            }
 
-                var syncedParams = _targetAvatar.expressionParameters.parameters.Select(p => p.name)
-                    .ToImmutableHashSet();
+            var syncedParams = _targetAvatar.expressionParameters.parameters.Select(p => p.name)
+                .ToImmutableHashSet();
 
-                foreach (var param in _bindingConfig.signalMappings)
-                    if (param.isSecret)
-                    {
-                        var paramName = _cachedNames.SignalMap[param.avrcSignalName];
-                        if (param.remappedParameterName != null) paramName = param.remappedParameterName;
-                        if (syncedParams.Contains(paramName))
-                            ok = Precheck(string.Format(L.INST_ERR_SYNCED_SECRET_PARAM, paramName), false);
-                    }
+            foreach (var param in _bindingConfig.signalMappings)
+            {
+                var paramName = _cachedNames.SignalMap[param.avrcSignalName];
+                if (param.remappedParameterName != null) paramName = param.remappedParameterName;
+                if (param.isSecret && syncedParams.Contains(paramName))
+                    ok &= Precheck(string.Format(L.INST_ERR_SYNCED_SECRET_PARAM, paramName), false);
             }
 
             return ok;
@@ -264,7 +270,7 @@ namespace net.fushizen.avrc
 
         private bool Precheck(string message, bool ok)
         {
-            if (ok) return ok;
+            if (ok) return true;
 
             EditorGUILayout.HelpBox(message, MessageType.Error);
 
@@ -312,15 +318,14 @@ namespace net.fushizen.avrc
                 });
             }
 
-            AddParameters(rootTargetMenu);
+            FilterControls(rootTargetMenu);
 
             EditorUtility.SetDirty(_installMenu);
         }
 
-        private void AddParameters(VRCExpressionsMenu rootTargetMenu)
+        private void FilterControls(VRCExpressionsMenu rootTargetMenu)
         {
-            var paramToType =
-                new Dictionary<string, AvrcSignalType>();
+            var paramToType = new Dictionary<string, AvrcSignalType>();
             foreach (var param in _params.signals)
                 if (_cachedNames.SignalMap.ContainsKey(param.name))
                 {
@@ -331,10 +336,8 @@ namespace net.fushizen.avrc
 
             var pendingMenus = new Queue<VRCExpressionsMenu>();
             var seen = new HashSet<long>();
-            var menuParams = new HashSet<string>();
 
-            long localId;
-            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(rootTargetMenu, out _, out localId);
+            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(rootTargetMenu, out _, out long localId);
             seen.Add(localId);
             pendingMenus.Enqueue(rootTargetMenu);
 
@@ -359,10 +362,8 @@ namespace net.fushizen.avrc
                     {
                         case VRCExpressionsMenu.Control.ControlType.Toggle:
                         case VRCExpressionsMenu.Control.ControlType.Button:
-                            menuParams.Add(elem.parameter.name);
                             break;
                         case VRCExpressionsMenu.Control.ControlType.SubMenu:
-                            menuParams.Add(elem.parameter.name);
                             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(elem.subMenu, out _, out localId);
                             if (!seen.Contains(localId))
                             {
@@ -372,7 +373,7 @@ namespace net.fushizen.avrc
 
                             break;
                         default:
-                            continue;
+                            continue; // don't add other control types, we don't support floats yet
                     }
 
                     filteredControls.Add(elem);
@@ -380,24 +381,33 @@ namespace net.fushizen.avrc
 
                 menu.controls = filteredControls;
             }
+        }
 
+        private void AddParameters(AvrcNames names)
+        {
             var expParams = new List<VRCExpressionParameters.Parameter>(_targetAvatar.expressionParameters.parameters);
             var expParamsAlreadyPresent = new HashSet<string>(expParams.Select(p => p.name));
 
-            foreach (var mappedParam in menuParams)
+            var paramDefs = _params.signals.Select(p => new KeyValuePair<string, AvrcSignal>(p.name, p))
+                .ToImmutableDictionary();
+
+            foreach (var binding in _bindingConfig.signalMappings)
             {
-                if (!paramToType.ContainsKey(mappedParam) || expParamsAlreadyPresent.Contains(mappedParam)) continue;
+                if (binding.isSecret) continue;
+
+                var mappedName = names.SignalMap[binding.avrcSignalName];
+                if (expParamsAlreadyPresent.Contains(mappedName)) continue;
 
                 expParams.Add(new VRCExpressionParameters.Parameter
                 {
-                    name = mappedParam,
+                    name = mappedName,
                     defaultValue = 0,
                     saved = false,
-                    valueType = paramToType[mappedParam] == AvrcSignalType.Bool
+                    valueType = paramDefs[binding.avrcSignalName].type == AvrcSignalType.Bool
                         ? VRCExpressionParameters.ValueType.Bool
                         : VRCExpressionParameters.ValueType.Int
                 });
-                expParamsAlreadyPresent.Add(mappedParam);
+                expParamsAlreadyPresent.Add(mappedName);
             }
 
             _targetAvatar.expressionParameters.parameters = expParams.ToArray();
@@ -409,19 +419,22 @@ namespace net.fushizen.avrc
         private AvrcBindingConfiguration _bindingConfig;
         private ReorderableList _remapList;
         private AvrcNames _cachedNames;
+
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
         private SerializedObject _bindingConfigSO;
+
         private SerializedProperty _remapProp;
-        private string duplicateName = null;
+        private string _duplicateName;
         private Dictionary<string, AvrcSignal> _signalMap;
 
-        private AvrcNames SyncNames()
+        private void SyncNames()
         {
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
-            duplicateName = null;
+            _duplicateName = null;
             if (_params == null)
             {
                 _cachedNames = null;
-                return null;
+                return;
             }
 
             var madeChanges = false;
@@ -450,7 +463,7 @@ namespace net.fushizen.avrc
 
                 if (!boundParams.Add(mappedName))
                 {
-                    duplicateName = mappedName;
+                    _duplicateName = mappedName;
                 }
             }
 
@@ -469,8 +482,6 @@ namespace net.fushizen.avrc
             );
 
             if (madeChanges) InitBindingList();
-
-            return _cachedNames;
         }
 
         void InitSavedState()
@@ -488,7 +499,6 @@ namespace net.fushizen.avrc
 
             _cachedNames = new AvrcNames(_params);
             _signalMap = new Dictionary<string, AvrcSignal>();
-            foreach (var sig in _params.signals) _signalMap[sig.name] = sig;
             _bindingConfig = AvrcStateSaver.LoadState(_params, _targetAvatar);
 
             if (_bindingConfig.writeDefaults == WriteDefaultsState.Mixed)
@@ -500,6 +510,7 @@ namespace net.fushizen.avrc
         private void InitBindingList()
         {
             _bindingConfigSO = new SerializedObject(_bindingConfig);
+            foreach (var sig in _params.signals) _signalMap[sig.name] = sig;
 
             _remapProp = _bindingConfigSO.FindProperty(nameof(AvrcBindingConfiguration.signalMappings));
 
@@ -515,7 +526,7 @@ namespace net.fushizen.avrc
             };
         }
 
-        private Single labelWidth;
+        private float _labelWidth;
 
         private string DefaultNameMapping(SignalMapping entry)
         {
@@ -531,7 +542,7 @@ namespace net.fushizen.avrc
 
             Rect labelRect = new Rect()
             {
-                width = labelWidth + 10,
+                width = _labelWidth + 10,
                 height = rect.height,
                 x = rect.x,
                 y = rect.y
@@ -626,11 +637,11 @@ namespace net.fushizen.avrc
             EditorGUILayout.LabelField(L.INST_SIGNAL_SETTINGS);
 
             // Compute label width
-            labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;
+            _labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;
 
             foreach (var p in _bindingConfig.signalMappings)
             {
-                labelWidth = Mathf.Max(labelWidth,
+                _labelWidth = Mathf.Max(_labelWidth,
                     new GUIStyle(GUI.skin.label).CalcSize(new GUIContent(p.avrcSignalName)).x);
             }
 
