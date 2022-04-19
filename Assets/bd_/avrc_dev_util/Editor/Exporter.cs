@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -11,10 +12,12 @@ namespace net.fushizen.avrc
         private static void Export()
         {
             var assets = AssetDatabase.FindAssets("*", new[] {"Assets/bd_/avrc"})
+                .Select(AssetDatabase.GUIDToAssetPath)
                 .Where(p => !p.EndsWith("Preferences.asset"))
                 .Where(p => !p.EndsWith("License.asset"))
                 .Where(p => !p.Contains("/NoExport"))
-                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => p.LastIndexOf(".", StringComparison.InvariantCulture) >
+                            p.LastIndexOf("/", StringComparison.InvariantCulture)) // not a full directory
                 .ToArray();
             Debug.LogWarning(string.Join(", ", assets));
             AssetDatabase.ExportPackage(assets, "avrc-dev.unitypackage");
