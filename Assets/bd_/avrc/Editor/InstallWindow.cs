@@ -18,6 +18,7 @@ namespace net.fushizen.avrc
 
     public class InstallWindow : EditorWindow
     {
+        internal static HashSet<InstallWindow> OPEN_WINDOWS = new HashSet<InstallWindow>();
         private VRCExpressionsMenu _installMenu;
         private AvrcLinkSpec _params;
         private Vector2 _scrollPos = Vector2.zero;
@@ -29,7 +30,13 @@ namespace net.fushizen.avrc
 
         private void OnEnable()
         {
+            OPEN_WINDOWS.Add(this);
             InitSavedState();
+        }
+
+        private void OnDisable()
+        {
+            OPEN_WINDOWS.Remove(this);
         }
 
         private void OnGUI()
@@ -151,6 +158,17 @@ namespace net.fushizen.avrc
             }
 
             GUILayout.EndScrollView();
+        }
+
+        internal static void LinkUpdated(AvrcLinkSpec link)
+        {
+            foreach (var opened in OPEN_WINDOWS)
+                if (opened._params == link)
+                {
+                    // Reinitialize to reflect any changes in the AvrcLinkSpec
+                    opened.InitSavedState();
+                    opened.Repaint();
+                }
         }
 
         [SuppressMessage("ReSharper", "UnusedMember.Global")]

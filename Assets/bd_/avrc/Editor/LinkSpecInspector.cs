@@ -42,6 +42,8 @@ namespace net.fushizen.avrc
 
         public override void OnInspectorGUI()
         {
+            EditorGUI.BeginChangeCheck();
+
             if (string.IsNullOrWhiteSpace(_guidProp.stringValue))
             {
                 _guidProp.stringValue = GUID.Generate().ToString();
@@ -122,6 +124,8 @@ namespace net.fushizen.avrc
             _paramsGen.GenerateParametersUI();
 
             serializedObject.UpdateIfRequiredOrScript();
+
+            if (EditorGUI.EndChangeCheck()) InstallWindow.LinkUpdated(target as AvrcLinkSpec);
         }
 
         private float OnElementHeight(int index)
