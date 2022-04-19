@@ -192,18 +192,26 @@ namespace net.fushizen.avrc
             GenerateSignalDrivers(linkSpec);
 
             // _nextPosition has been updated to point above the signal stack.
-            var rxLocal = new ContactDriver(rxPilot, _nextPosition - linkSpec.baseOffset, 1);
+            var rxLocal = new ContactDriver(rxPilot, _nextPosition - linkSpec.baseOffset, 2);
             _nextPosition += SignalOffset;
-            var txLocal = new ContactDriver(txPilot, _nextPosition - linkSpec.baseOffset, 1);
+            var txLocal = new ContactDriver(txPilot, _nextPosition - linkSpec.baseOffset, 2);
+
+            // Generate a rest position to ensure that we transition through not-present even when multiple transmitters
+            // are present.
+            _nextPosition += SignalOffset;
+            var rxRest = new ContactDriver(rxPilot, _nextPosition - linkSpec.baseOffset, 1);
+            _nextPosition += SignalOffset;
+            var txRest = new ContactDriver(txPilot, _nextPosition - linkSpec.baseOffset, 1);
 
             // Register local/present as probable values
-            SignalDrivers = SignalDrivers.Add(PILOT_RX, new[] {rxPresent, rxLocal}.ToImmutableArray());
-            SignalDrivers = SignalDrivers.Add(PILOT_TX, new[] {txPresent, txLocal}.ToImmutableArray());
+            SignalDrivers = SignalDrivers.Add(PILOT_RX, new[] {rxPresent, rxRest, rxLocal}.ToImmutableArray());
+            SignalDrivers = SignalDrivers.Add(PILOT_TX, new[] {txPresent, txRest, txLocal}.ToImmutableArray());
 
             GenerateProbePhases();
 
             MyPilotLocal = role == Role.RX ? rxLocal : txLocal;
             TheirPilotLocal = role == Role.RX ? txLocal : rxLocal;
+            TheirPilotRest = role == Role.RX ? txRest : rxRest;
         }
 
         internal ImmutableList<ContactSpec> AllContacts { get; private set; }
@@ -213,6 +221,8 @@ namespace net.fushizen.avrc
 
         internal ContactDriver TheirPilotLocal { get; }
         internal ContactDriver TheirPilotNotLocal { get; }
+
+        internal ContactDriver TheirPilotRest { get; }
 
         internal ImmutableDictionary<string, ImmutableArray<ContactDriver>> SignalDrivers { get; private set; }
 

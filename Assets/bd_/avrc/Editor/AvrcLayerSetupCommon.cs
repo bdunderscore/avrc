@@ -482,12 +482,12 @@ namespace net.fushizen.avrc
 
             // Timeout transitions for peerLocalCheck states
             t = peerLocalCheck0.AddTransition(init);
-            t.exitTime = 1f;
+            t.exitTime = 1.5f;
             t.hasExitTime = true;
             t.duration = 0;
 
             t = peerLocalCheck1.AddTransition(init);
-            t.exitTime = 1f;
+            t.exitTime = 2.5f;
             t.hasExitTime = true;
             t.duration = 0;
 
@@ -560,6 +560,20 @@ namespace net.fushizen.avrc
             t.hasExitTime = true;
             t.hasFixedDuration = false;
 
+            var standbyRest = stateMachine.AddState("Standby:Rest", pos(-1.5f, 1.5f));
+            standbyRest.motion = Animations.Named("Standby:Rest", () =>
+            {
+                var _clip = new AnimationClip();
+                SignalEncoding.TheirPilotRest.AddClip(Names, _clip, 0.5f);
+                return _clip;
+            });
+            standbyRest.behaviours = new[] {ParameterDriver(false, SignalEncoding.TheirPilotRest.DelayDriver)};
+
+            t = standbyPresentCheck.AddTransition(standbyRest);
+            t.exitTime = 1;
+            t.hasExitTime = true;
+            t.hasFixedDuration = false;
+
             var standbyLocal = stateMachine.AddState("Standby:Local:Prep", pos(-0.5f, -0.5f));
             standbyLocal.motion = Animations.Named("Standby:Local", () =>
             {
@@ -582,7 +596,7 @@ namespace net.fushizen.avrc
             //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotLocal.Target.Parameter);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
 
-            t = AddInstantTransition(standbyPresentCheck, standbyLocal);
+            t = AddInstantTransition(standbyRest, standbyLocal);
             //t.AddCondition(AnimatorConditionMode.IfNot, 0, SignalEncoding.TheirPilotNotLocal.Target.Parameter);
             t.AddCondition(AnimatorConditionMode.IfNot, 0, Names.PubParamEitherLocal);
 
