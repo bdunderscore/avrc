@@ -51,6 +51,12 @@ namespace net.fushizen.avrc
             {
                 _installMenu = null;
                 InitSavedState();
+
+                var writeDefaultsProp_init = _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults));
+                if (writeDefaultsProp_init.enumValueIndex == (int) WriteDefaultsState.Mixed)
+                    // Initialize
+                    writeDefaultsProp_init.enumValueIndex =
+                        (int) AvrcAnimatorUtils.GetWriteDefaultsState(_targetAvatar);
             }
 
             // ReSharper disable once HeapView.BoxingAllocation
@@ -72,6 +78,7 @@ namespace net.fushizen.avrc
             }
 
             var writeDefaultsProp = _bindingConfigSO.FindProperty(nameof(_bindingConfig.writeDefaults));
+
             var writeDefaults = writeDefaultsProp.enumValueIndex == (int) WriteDefaultsState.YesWriteDefaults;
             EditorGUI.BeginChangeCheck();
             writeDefaults = EditorGUILayout.Toggle(L.INST_WRITE_DEFAULTS, writeDefaults);
