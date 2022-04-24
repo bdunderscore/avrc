@@ -67,10 +67,15 @@ namespace net.fushizen.avrc
                 //
                 // We do want to avoid making this too large, as it'll increase the effect of rotation on instantaneous
                 // position offset and thus risk falsely detecting a loss of communication.
+                //
+                // In total, we add 
                 _baseOffsetProp.vector3Value = new Vector3(
-                    Random.Range(-10, 10),
-                    Random.Range(-100, 100),
-                    Random.Range(-10, 10)
+                    // We use increments of 5m as this is (slightly more than) the diameter of the signal contacts. 
+                    Random.Range(-4, 4) * 5, // ~3 bits
+                    // We use 8m here as we are a bit more worried about floating point error on the Y axis; thus,
+                    // we try to keep the low few bits of the coordinate zero.
+                    Random.Range(-1024, 1024) * 8, // 11 bits
+                    Random.Range(-4, 4) * 5 // ~3 bits
                 );
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssets();
