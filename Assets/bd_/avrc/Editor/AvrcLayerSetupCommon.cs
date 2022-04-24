@@ -403,6 +403,7 @@ namespace net.fushizen.avrc
             AddParameter(Names.PubParamEitherLocal, AnimatorControllerParameterType.Bool);
             AddParameter(Names.PubParamPeerLocal, AnimatorControllerParameterType.Bool);
             AddParameter(Names.PubParamPeerPresent, AnimatorControllerParameterType.Bool);
+            AddParameter(Names.ParamSecretActive, AnimatorControllerParameterType.Bool);
 
             foreach (var collider in SignalEncoding.AllContacts)
                 if (!collider.IsSender)
@@ -422,7 +423,8 @@ namespace net.fushizen.avrc
                 ParameterDriver(localOnly: false,
                     (Names.PubParamEitherLocal, 0),
                     (Names.PubParamPeerLocal, 0),
-                    (Names.PubParamPeerPresent, 0)
+                    (Names.PubParamPeerPresent, 0),
+                    (Names.ParamSecretActive, 0)
                 )
             };
 
@@ -438,7 +440,8 @@ namespace net.fushizen.avrc
                 ParameterDriver(localOnly: false,
                     (Names.PubParamEitherLocal, 1),
                     (Names.PubParamPeerLocal, 0),
-                    (Names.PubParamPeerPresent, 0)
+                    (Names.PubParamPeerPresent, 0),
+                    (Names.ParamSecretActive, 0)
                 )
             };
 
@@ -449,7 +452,8 @@ namespace net.fushizen.avrc
                 ParameterDriver(localOnly: false,
                     (Names.PubParamEitherLocal, 1),
                     (Names.PubParamPeerLocal, 0),
-                    (Names.PubParamPeerPresent, 1)
+                    (Names.PubParamPeerPresent, 1),
+                    (Names.ParamSecretActive, 1)
                 )
             };
             t = AddInstantTransition(ownerLocal, ownerLocalTxPresent);
@@ -496,7 +500,8 @@ namespace net.fushizen.avrc
                 ParameterDriver(localOnly: false,
                     (Names.PubParamEitherLocal, 1),
                     (Names.PubParamPeerLocal, 1),
-                    (Names.PubParamPeerPresent, 1)
+                    (Names.PubParamPeerPresent, 1),
+                    (Names.ParamSecretActive, 1)
                 )
             };
 
@@ -516,7 +521,8 @@ namespace net.fushizen.avrc
                 ParameterDriver(localOnly: false,
                     (Names.PubParamEitherLocal, 0),
                     (Names.PubParamPeerLocal, 0),
-                    (Names.PubParamPeerPresent, 1)
+                    (Names.PubParamPeerPresent, 1),
+                    (Names.ParamSecretActive, 0)
                 )
             };
 

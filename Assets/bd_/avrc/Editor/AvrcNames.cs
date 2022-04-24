@@ -39,6 +39,7 @@ namespace net.fushizen.avrc
 
         internal string PubParamPrefix => $"AVRC_{Prefix}_";
         internal string ParamPrefix => $"_AVRCI_{Prefix}_";
+        internal string ParamSecretActive => $"_AVRCI_{Prefix}_SecretActive";
 
         internal string PubParamEitherLocal => $"AVRC_{Prefix}_EitherLocal";
         internal string PubParamPeerPresent => $"AVRC_{Prefix}_PeerPresent";

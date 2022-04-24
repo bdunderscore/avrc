@@ -76,7 +76,7 @@ namespace net.fushizen.avrc
         )
         {
             var binding = GetParamBinding(signal);
-            var presenceSignal = binding.isSecret ? Names.PubParamEitherLocal : Names.PubParamPeerPresent;
+            var presenceSignal = binding.isSecret ? Names.ParamSecretActive : Names.PubParamPeerPresent;
             var driverIsLocal = HasSyncedParameter(Names.SignalMap[signal.name]);
 
             var stateMachine = new AnimatorStateMachine();
@@ -187,10 +187,10 @@ namespace net.fushizen.avrc
 
                 transition = AddInstantTransition(remoteDriven[i], startup);
                 transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
-
-                transition = AddInstantTransition(drivenByTx, startup);
-                transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
             }
+
+            transition = AddInstantTransition(drivenByTx, startup);
+            transition.AddCondition(AnimatorConditionMode.IfNot, 0, presenceSignal);
 
             return stateMachine;
         }
