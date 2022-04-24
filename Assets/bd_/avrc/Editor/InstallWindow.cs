@@ -327,6 +327,8 @@ namespace net.fushizen.avrc
                 rootTargetMenu,
                 names.SignalMap
             );
+            cloner.hideFlags = HideFlags.HideInInspector;
+            cloner.objectNamePrefix = "ZZZ_AVRC_EXTRACTED_";
 
             menuRef.menu = rootTargetMenu;
             cloner.SyncMenus(_params.sourceExpressionMenu != null

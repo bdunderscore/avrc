@@ -20,6 +20,9 @@ namespace net.fushizen.avrc
         private Dictionary<string, string> _paramRemapDict;
 
         private HashSet<VRCExpressionsMenu> enqueuedAssets = new HashSet<VRCExpressionsMenu>();
+
+        internal HideFlags hideFlags = HideFlags.None;
+        internal string objectNamePrefix = "ZZZ_AVRC_";
         private Queue<VRCExpressionsMenu> pendingClone = new Queue<VRCExpressionsMenu>();
 
         private Dictionary<VRCExpressionsMenu, VRCExpressionsMenu> srcToCloneMap
@@ -68,6 +71,8 @@ namespace net.fushizen.avrc
                 new MenuCloner(
                     new SerializedObject(avrcLinkSpec).FindProperty(nameof(AvrcLinkSpec.embeddedExpressionsMenu)),
                     avrcLinkSpec);
+            cloner.hideFlags = HideFlags.HideInInspector | HideFlags.NotEditable;
+            cloner.objectNamePrefix = "ZZZ_AVRC_EMBEDDED_";
 
             if (cloner._notReady)
             {
@@ -97,7 +102,14 @@ namespace net.fushizen.avrc
             }
 
             srcToCloneMap[src] = target;
-            target.name = src.name;
+            var newName = objectNamePrefix + src.name;
+            if (target.name != newName || target.hideFlags != hideFlags)
+            {
+                target.hideFlags = hideFlags;
+                target.name = newName;
+                EditorUtility.SetDirty(target);
+            }
+
             enqueuedAssets.Add(target);
             pendingClone.Enqueue(src);
 
@@ -123,6 +135,12 @@ namespace net.fushizen.avrc
             bool enterChildren = true;
             while (iter.Next(enterChildren))
             {
+                if (iter.name == "m_ObjectHideFlags" || iter.name == "m_Name")
+                {
+                    enterChildren = false;
+                    continue;
+                }
+
                 enterChildren = true;
 
                 if (iter.propertyType == SerializedPropertyType.ObjectReference &&

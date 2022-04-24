@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Debug = System.Diagnostics.Debug;
 using Random = UnityEngine.Random;
 
@@ -17,7 +18,10 @@ namespace net.fushizen.avrc
         private AvrcLinkSpecGenerator _paramsGen;
         private ReorderableList _paramsList;
         private SerializedProperty _paramsProp;
+        private bool _showClearEmbeddedMenu;
         private SerializedProperty _srcMenuProp;
+
+        private GUIStyle _wrappingLabelStyle;
 
         private Localizations L => Localizations.Inst;
 
@@ -40,8 +44,19 @@ namespace net.fushizen.avrc
             _paramsGen = new AvrcLinkSpecGenerator(target as AvrcLinkSpec);
         }
 
+        private void InitStyles()
+        {
+            if (_wrappingLabelStyle == null)
+                _wrappingLabelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    wordWrap = true
+                };
+        }
+
         public override void OnInspectorGUI()
         {
+            InitStyles();
+
             EditorGUI.BeginChangeCheck();
 
             if (string.IsNullOrWhiteSpace(_guidProp.stringValue))
@@ -84,14 +99,47 @@ namespace net.fushizen.avrc
             var srcMenu = _srcMenuProp.objectReferenceValue;
             if (srcMenu == null && _embeddedMenuProp.objectReferenceValue != null)
             {
+                EditorGUILayout.LabelField(L.AP_HAS_EMBED, _wrappingLabelStyle);
                 using (new EditorGUI.DisabledScope(true))
                 {
                     EditorGUILayout.PropertyField(_embeddedMenuProp, L.AP_SRC_MENU);
                 }
+
+                if (!_showClearEmbeddedMenu)
+                {
+                    _showClearEmbeddedMenu = GUILayout.Button(L.AP_CLEAR_EMBED_BUTTON);
+                }
+                else
+                {
+                    if (GUILayout.Button(L.AP_CLEAR_EMBED_CANCEL))
+                    {
+                        _showClearEmbeddedMenu = false;
+                    }
+                    else
+                    {
+                        EditorGUILayout.LabelField(L.AP_CLEAR_EMBED_WARN, _wrappingLabelStyle);
+                        var oldBackground = GUI.backgroundColor;
+                        GUI.backgroundColor = Color.red;
+                        if (GUILayout.Button(L.AP_CLEAR_EMBED_CONFIRM /*, _clearEmbedConfirmStyle*/))
+                            ClearEmbeddedMenu();
+
+                        GUI.backgroundColor = oldBackground;
+                    }
+                }
             }
             else
             {
+                _showClearEmbeddedMenu = false;
+
+                EditorGUILayout.LabelField(L.AP_CAN_EMBED, _wrappingLabelStyle);
+
                 EditorGUILayout.PropertyField(_srcMenuProp, L.AP_SRC_MENU);
+
+                if (srcMenu != _srcMenuProp.objectReferenceValue &&
+                    _srcMenuProp.objectReferenceValue != null &&
+                    _srcMenuProp.objectReferenceValue.name.StartsWith("ZZZ_AVRC_EMBEDDED_"))
+                    // Reject attempts to reference our embedded assets.
+                    _srcMenuProp.objectReferenceValue = srcMenu;
 
                 if (srcMenu != _srcMenuProp.objectReferenceValue &&
                     (srcMenu != null || _srcMenuProp.objectReferenceValue != null))
@@ -226,6 +274,22 @@ namespace net.fushizen.avrc
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 30), minVal, GUIContent.none);
                 AvrcUI.RenderLabel(ref rect, "...");
                 EditorGUI.PropertyField(AvrcUI.AdvanceRect(ref rect, 30), maxVal, GUIContent.none);
+            }
+        }
+
+        private void ClearEmbeddedMenu()
+        {
+            _srcMenuProp.objectReferenceValue = null;
+            _embeddedMenuProp.objectReferenceValue = null;
+
+            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(target)))
+            {
+                UnityEngine.Debug.Log(asset.GetType());
+                if (asset is VRCExpressionsMenu menu)
+                {
+                    AssetDatabase.RemoveObjectFromAsset(menu);
+                    DestroyImmediate(menu, true);
+                }
             }
         }
     }

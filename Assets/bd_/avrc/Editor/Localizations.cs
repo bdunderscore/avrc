@@ -61,6 +61,19 @@ namespace net.fushizen.avrc
             AP_PARAMETERS = new GUIContent("パラメータ"),
             AP_RX_PARAM = new GUIContent("受信パラメータ"),
             AP_RANGE = new GUIContent("範囲"),
+            AP_CAN_EMBED = new GUIContent(
+                // use spaces to hint where to put linebreaks
+                // zero-width spaces don't seem to work:
+                // https://issuetracker.unity3d.com/issues/zero-width-space-does-not-cause-line-break-when-wrapping-words
+                "Expressions Menuアセット（とそのサブメニュー）をこの Link Spec " +
+                "アセットファイルの中に内包することができます。 " +
+                "そうすると、 フレンドにそのメニューを渡すときはこの Link Spec " +
+                "ファイル一つだけで済みます。"),
+            AP_HAS_EMBED = new GUIContent("このLink Specアセットに内包メニューがあります。"),
+            AP_CLEAR_EMBED_BUTTON = new GUIContent("内包メニューを消去"),
+            AP_CLEAR_EMBED_CANCEL = new GUIContent("内包メニュー消去をキャンセル"),
+            AP_CLEAR_EMBED_WARN = new GUIContent("注意：内包メニューを消去したら、戻すことができません。"),
+            AP_CLEAR_EMBED_CONFIRM = new GUIContent("内包メニューを消去"),
 
             // Installer
             INST_UNLICENSED = "ライセンスキーが見つかりませんでした。ライセンスキーを導入していない人同士は接続できません。",
@@ -207,6 +220,25 @@ namespace net.fushizen.avrc
         public GUIContent AP_PARAMETERS { get; private set; } = new GUIContent("Parameters");
         public GUIContent AP_RX_PARAM { get; private set; } = new GUIContent("RX parameter");
         public GUIContent AP_RANGE { get; private set; } = new GUIContent("Range");
+
+
+        public GUIContent AP_CAN_EMBED { get; private set; } = new GUIContent(
+            "You can embed an Expressions Menu (and its submenus) into this Link Spec Asset file. " +
+            "This will allow you to provide this menu to your friend just by copying this one Link Spec Asset."
+        );
+
+        public GUIContent AP_HAS_EMBED { get; private set; } = new GUIContent(
+            "This Link Spec Asset contains an embedded menu."
+        );
+
+        public GUIContent AP_CLEAR_EMBED_BUTTON { get; private set; } = new GUIContent("Clear embedded menu");
+        public GUIContent AP_CLEAR_EMBED_CANCEL { get; private set; } = new GUIContent("Cancel clearing menu");
+
+        public GUIContent AP_CLEAR_EMBED_WARN { get; private set; } =
+            new GUIContent("Warning: Once the embedded menu is cleared, it cannot be restored.");
+
+        public GUIContent AP_CLEAR_EMBED_CONFIRM { get; private set; } =
+            new GUIContent("Clear embedded menu");
 
         #endregion
 
