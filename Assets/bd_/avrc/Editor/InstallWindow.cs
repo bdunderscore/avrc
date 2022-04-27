@@ -231,9 +231,6 @@ namespace net.fushizen.avrc
 
             _bindingConfigSO.ApplyModifiedPropertiesWithoutUndo();
 
-            if (AvrcLicenseManager.GetLicenseState() != LicenseState.Ok)
-                EditorGUILayout.HelpBox(L.INST_UNLICENSED, MessageType.Warning);
-
             // Basic prechecks - we bail out early if these break
 
             var ok = Precheck(L.INST_ERR_NO_ROLE, _bindingConfig.role != Role.Init);
@@ -513,7 +510,6 @@ namespace net.fushizen.avrc
 
         void InitSavedState()
         {
-            AvrcLicenseManager.ClearCache();
             _remapList = null;
 
             if (_params == null || _targetAvatar == null)

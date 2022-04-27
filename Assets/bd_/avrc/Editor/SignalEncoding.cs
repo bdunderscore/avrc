@@ -308,9 +308,7 @@ namespace net.fushizen.avrc
             var newContact = new ContactSpec();
             newContact.Name = name;
             newContact.BasePosition = _nextPosition;
-            newContact.CollisionTags = AvrcLicenseManager.MungeContactTag(
-                _linkSpec.guid + "$" + name, sendingRole == _myRole
-            );
+            newContact.CollisionTags = new List<string>(new[] {_linkSpec.guid + "$" + name});
             newContact.IsSender = sendingRole == _myRole;
             newContact.Parameter = $"{_layerPrefix}${name}";
             AllContacts = AllContacts.Add(newContact);
