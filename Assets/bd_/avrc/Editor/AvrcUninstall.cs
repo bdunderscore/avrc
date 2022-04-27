@@ -23,6 +23,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -51,6 +52,38 @@ namespace net.fushizen.avrc
                        || (fx?.layers ?? Array.Empty<AnimatorControllerLayer>())
                        .Any(layer => AvrcLayerMarker.IsMatchingLayer(layer, linkSpec));
             }
+        }
+
+        internal static HashSet<string> GetReferencedParameters(VRCAvatarDescriptor descriptor)
+        {
+            var set = new HashSet<string>();
+
+            var stateMachines = new Queue<AnimatorStateMachine>(
+                descriptor.baseAnimationLayers.Concat(descriptor.specialAnimationLayers)
+                    .Select(layer => (layer.animatorController as AnimatorController)?.layers)
+                    .Where(layers => layers != null)
+                    .SelectMany(layers => layers)
+                    .Select(layer => layer.stateMachine)
+            );
+
+            while (stateMachines.Count > 0)
+            {
+                var next = stateMachines.Dequeue();
+                foreach (var sub in next.stateMachines)
+                    if (sub.stateMachine != null)
+                        stateMachines.Enqueue(sub.stateMachine);
+
+                foreach (var condition in
+                         next.anyStateTransitions
+                             .Concat(next.states.SelectMany(
+                                 s => s.state != null ? s.state.transitions : Array.Empty<AnimatorStateTransition>()
+                             ))
+                             .SelectMany(t => t.conditions ?? Array.Empty<AnimatorCondition>())
+                        )
+                    set.Add(condition.parameter);
+            }
+
+            return set;
         }
 
         public static void RemoveAvrcConfiguration(VRCAvatarDescriptor avatarDescriptor,
@@ -103,9 +136,6 @@ namespace net.fushizen.avrc
                         return !AvrcLayerMarker.IsMatchingLayer(layer, bindingConfiguration.linkSpec);
                     return !AvrcLayerMarker.IsAvrcLayer(layer);
                 }).ToArray();
-                fx.parameters = fx.parameters
-                    .Where(parameter => paramPrefixes.All(prefix => !parameter.name.StartsWith(prefix)))
-                    .ToArray();
 
                 var avrcLayers = fx.layers.SelectMany(l =>
                 {
@@ -120,8 +150,30 @@ namespace net.fushizen.avrc
                     // Purge all AVRC layers
                     fx.layers = fx.layers.Where(l => !AvrcLayerMarker.IsAvrcLayer(l)).ToArray();
 
+                // Purge unreferenced AVRC parameters
+                var referencedParameters = GetReferencedParameters(avatarDescriptor);
+                fx.parameters = fx.parameters.Where(
+                    p =>
+                    {
+                        if (paramPrefixes.Any(prefix => p.name.StartsWith(prefix)))
+                            return referencedParameters.Contains(p.name);
+                        return true;
+                    }
+                ).ToArray();
+
                 EditorUtility.SetDirty(fx);
                 AvrcAnimatorUtils.GarbageCollectAnimatorAsset(fx);
+            }
+
+            if (avatarDescriptor.expressionParameters != null)
+            {
+                var internalParamPrefix = bindingConfiguration != null ? names.ParamPrefix : "_AVRC_";
+
+                avatarDescriptor.expressionParameters.parameters = avatarDescriptor.expressionParameters.parameters
+                    .Where(p => !p.name.StartsWith(internalParamPrefix))
+                    .ToArray();
+
+                EditorUtility.SetDirty(avatarDescriptor.expressionParameters);
             }
         }
     }

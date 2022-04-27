@@ -94,7 +94,7 @@ namespace net.fushizen.avrc
         /// <returns></returns>
         internal string TxSignalFlag(AvrcNames names)
         {
-            return $"_AVRC_internal_{names.Prefix}_tx_{name}";
+            return $"{names.ParamPrefix}$internal_tx_{name}";
         }
     }
 

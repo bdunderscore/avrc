@@ -186,20 +186,20 @@ namespace net.fushizen.avrc
 
         // We use a 16m offset to ensure that we have two diameters of gap between signals.
         private static readonly Vector3 SignalOffset = new Vector3(0, 16f, 0);
-        private readonly string _layerPrefix;
 
         private readonly AvrcLinkSpec _linkSpec;
         private readonly Role _myRole;
+        private readonly string _paramPrefix;
         private Vector3 _nextPosition;
 
         internal ImmutableList<ProbePhase> ProbePhases;
 
-        internal SignalEncoding(AvrcLinkSpec linkSpec, Role role, string layerPrefix)
+        internal SignalEncoding(AvrcLinkSpec linkSpec, Role role, string paramPrefix)
         {
             _linkSpec = linkSpec;
             _myRole = role;
             _nextPosition = linkSpec.baseOffset;
-            _layerPrefix = layerPrefix;
+            _paramPrefix = paramPrefix;
 
             AllContacts = ImmutableList<ContactSpec>.Empty;
 
@@ -334,7 +334,7 @@ namespace net.fushizen.avrc
             newContact.BasePosition = _nextPosition;
             newContact.CollisionTags = new List<string>(new[] {_linkSpec.guid + "$" + name});
             newContact.IsSender = sendingRole == _myRole;
-            newContact.Parameter = $"{_layerPrefix}${name}";
+            newContact.Parameter = $"{_paramPrefix}${name}";
             AllContacts = AllContacts.Add(newContact);
 
             return newContact;

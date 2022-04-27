@@ -59,7 +59,7 @@ namespace net.fushizen.avrc
             Binding = binding;
             Names = new AvrcNames(binding);
             LinkSpec = binding.linkSpec;
-            SignalEncoding = new SignalEncoding(LinkSpec, binding.role, Names.LayerPrefix);
+            SignalEncoding = new SignalEncoding(LinkSpec, binding.role, Names.ParamPrefix);
             Timeout = Mathf.Max(1.0f, binding.timeoutSeconds);
 
             Animations = new AvrcAnimations(LinkSpec, Names);

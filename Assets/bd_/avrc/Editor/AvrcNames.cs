@@ -62,8 +62,8 @@ namespace net.fushizen.avrc
         internal string LayerProbe => $"{LayerPrefix}_Probe";
 
         internal string PubParamPrefix => $"AVRC_{Prefix}_";
-        internal string ParamPrefix => $"_AVRCI_{Prefix}_";
-        internal string ParamSecretActive => $"_AVRCI_{Prefix}_SecretActive";
+        internal string ParamPrefix => $"_AVRC_{Prefix}_";
+        internal string ParamSecretActive => $"_AVRC_{Prefix}_SecretActive";
 
         internal string PubParamEitherLocal => $"AVRC_{Prefix}_EitherLocal";
         internal string PubParamPeerPresent => $"AVRC_{Prefix}_PeerPresent";
@@ -77,12 +77,12 @@ namespace net.fushizen.avrc
 
         internal string InternalParameter(AvrcSignal signal, string suffix = "")
         {
-            return $"_AVRCI_{Prefix}_{signal.name}$" + suffix;
+            return ParamPrefix + signal.name + suffix;
         }
 
         public string ParameterLayerName(AvrcSignal signal)
         {
-            return $"_AVRC_{Prefix}_{signal.name}";
+            return $"{LayerPrefix}_{signal.name}";
         }
     }
 }
