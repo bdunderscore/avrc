@@ -1,0 +1,44 @@
+﻿name: Build release artifacts
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          echo "Assets/bd_.meta" >> metaList
+          echo "Assets/bd_/avrc.meta" >> metaList
+          find Assets/bd_/avrc -name '*.meta' >> metaList
+      - run: mkdir output
+      - uses: pCYSl5EDgo/create-unitypackage@master
+        with:
+          package-path: 'output/avrc-dev.unitypackage'
+          include-files: metaList
+      - name: Set version based on tag
+        id: version
+        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: true
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Upload unitypackage release artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: output/avrc-dev.unitypackage
+          asset_name: avrc-${{ steps.version.outputs.version }}.unitypackage
+          asset_content_type: application/octet-stream
