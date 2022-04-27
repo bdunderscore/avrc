@@ -100,7 +100,6 @@ namespace net.fushizen.avrc
             AP_CLEAR_EMBED_CONFIRM = new GUIContent("内包メニューを消去"),
 
             // Installer
-            INST_UNLICENSED = "ライセンスキーが見つかりませんでした。ライセンスキーを導入していない人同士は接続できません。",
             INST_TITLE = new GUIContent("AVRC Installer"),
             INST_PARAMS = new GUIContent("パラメータアセット"),
             INST_AVATAR = new GUIContent("対象アバター", "インストールするアバター"),
@@ -267,10 +266,6 @@ namespace net.fushizen.avrc
         #endregion
 
         #region Installer
-
-        public string INST_UNLICENSED { get; private set; } =
-            "License key not found. You will not be able to communicate with other " +
-            "unlicensed users.";
 
         public GUIContent INST_TITLE { get; private set; } = new GUIContent("AVRC Installer");
         public GUIContent INST_PARAMS { get; private set; } = new GUIContent("Parameters");
