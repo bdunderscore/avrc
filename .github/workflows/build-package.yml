@@ -1,0 +1,22 @@
+﻿name: Build unitypackage
+
+on: push
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          echo "Assets/bd_.meta" >> metaList
+          echo "Assets/bd_/avrc.meta" >> metaList
+          find Assets/bd_/avrc -name '*.meta' >> metaList
+      - run: mkdir output
+      - uses: pCYSl5EDgo/create-unitypackage@master
+        with:
+          package-path: 'output/avrc-dev.unitypackage'
+          include-files: metaList
+      - uses: actions/upload-artifact@master
+        with:
+          path: output
+          name: package
