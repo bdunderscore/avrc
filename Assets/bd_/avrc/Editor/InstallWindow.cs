@@ -487,7 +487,7 @@ namespace net.fushizen.avrc
 
             var madeChanges = false;
 
-            _cachedNames = new AvrcNames(_params);
+            _cachedNames = new AvrcNames(_params, _bindingConfig.role, _bindingConfig.layerName);
             var boundParams = new HashSet<string>();
             var specParams = new HashSet<string>();
             foreach (var specParam in _params.signals)
@@ -578,7 +578,7 @@ namespace net.fushizen.avrc
         private string DefaultNameMapping(SignalMapping entry)
         {
             return _bindingConfig.role == Role.TX
-                ? $"AVRC_{_params.name}_{entry.avrcSignalName}"
+                ? _cachedNames.SignalMap[entry.avrcSignalName]
                 : entry.avrcSignalName;
         }
 

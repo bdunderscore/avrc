@@ -33,10 +33,8 @@ namespace net.fushizen.avrc
         internal readonly string Prefix;
         internal readonly Dictionary<string, string> SignalMap;
 
-        internal AvrcNames(AvrcBindingConfiguration binding) : this(binding.linkSpec, binding.role)
+        internal AvrcNames(AvrcBindingConfiguration binding) : this(binding.linkSpec, binding.role, binding.layerName)
         {
-            if (!string.IsNullOrEmpty(binding.layerName)) Prefix = binding.layerName;
-
             foreach (var nameOverride in binding.signalMappings)
             {
                 if (!string.IsNullOrWhiteSpace(nameOverride.remappedParameterName))
@@ -44,10 +42,12 @@ namespace net.fushizen.avrc
             }
         }
 
-        internal AvrcNames(AvrcLinkSpec linkSpec, Role role = Role.TX)
+        internal AvrcNames(AvrcLinkSpec linkSpec, Role role = Role.TX, string layerPrefix = null)
         {
-            Prefix = linkSpec.name;
+            Prefix = layerPrefix;
             LinkGUID = linkSpec.guid;
+
+            if (string.IsNullOrEmpty(Prefix)) Prefix = linkSpec.name;
 
             SignalMap = new Dictionary<string, string>();
             foreach (var p in linkSpec.signals)
