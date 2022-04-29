@@ -4,7 +4,7 @@
 
 All other files (except for the demo video referenced in the README) are Copyright 2021-2022 bd_, and licensed under the MIT license.
 
-== MIT License ==
+## MIT License
 
 ```
 Copyright (c) 2021-2022 bd_
@@ -28,7 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-== CC-BY-NC International 4.0 ==
+## CC-BY-NC International 4.0
 
 ```
 Creative Commons Attribution-NonCommercial 4.0 International Public
