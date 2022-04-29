@@ -1,9 +1,9 @@
-https://user-images.githubusercontent.com/64174065/165873145-4014a4f1-2e32-47f7-b05c-4d2876afa95e.mp4
-
 ## Avatar Remote
 
 Avatar Remote (AVRC) is a Unity editor extension lets you sync parameters between two (or more!) VRChat avatars.
 AVRC does not use OSC, and once set up does not require any external application to be used to transfer these values.
+
+https://user-images.githubusercontent.com/64174065/165873222-e8b2366f-f491-42ac-9889-9be30c16aad7.mp4
 
 For more details, see [the documentation](https://www.notion.so/bdunderscore/Avatar-Remote-Documentation-33e090ea8fe642d584f5384cf88c2c1e).
 
