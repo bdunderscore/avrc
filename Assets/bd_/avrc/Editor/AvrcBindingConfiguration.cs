@@ -31,6 +31,7 @@ using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.Serialization;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Avatars.ScriptableObjects;
 using Object = UnityEngine.Object;
 
 namespace net.fushizen.avrc
@@ -108,6 +109,7 @@ namespace net.fushizen.avrc
         public float timeoutSeconds = 5.0f;
         public string layerName;
         public WriteDefaultsState writeDefaults = WriteDefaultsState.Mixed;
+        public VRCExpressionsMenu installTargetMenu;
     }
 
     [CustomEditor(typeof(AvrcBindingConfiguration))]

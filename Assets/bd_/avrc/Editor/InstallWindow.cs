@@ -43,7 +43,7 @@ namespace net.fushizen.avrc
     public class InstallWindow : EditorWindow
     {
         internal static HashSet<InstallWindow> OPEN_WINDOWS = new HashSet<InstallWindow>();
-        private VRCExpressionsMenu _installMenu;
+        private SerializedProperty _installMenu;
         private AvrcLinkSpec _params;
         private Vector2 _scrollPos = Vector2.zero;
 
@@ -96,14 +96,14 @@ namespace net.fushizen.avrc
                 L.PROP_ROLE_NAMES
             );
 
-            if (roleProp.enumValueIndex != (int) Role.RX)
+            if (roleProp.enumValueIndex != (int) Role.RX && _installMenu != null)
             {
                 using (new EditorGUI.DisabledGroupScope(_params == null ||
                                                         _params.embeddedExpressionsMenu == null &&
                                                         _params.sourceExpressionMenu == null))
                 {
-                    _installMenu = EditorGUILayout.ObjectField(
-                        L.INST_MENU, _installMenu, typeof(VRCExpressionsMenu), allowSceneObjects: false
+                    _installMenu.objectReferenceValue = EditorGUILayout.ObjectField(
+                        L.INST_MENU, _installMenu.objectReferenceValue, typeof(VRCExpressionsMenu), false
                     ) as VRCExpressionsMenu;
                 }
             }
@@ -309,9 +309,11 @@ namespace net.fushizen.avrc
 
         private bool IsTargetMenuFull()
         {
-            if (_installMenu == null) return false;
+            var menu = _installMenu?.objectReferenceValue as VRCExpressionsMenu;
 
-            return _installMenu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS;
+            if (menu == null) return false;
+
+            return menu.controls.Count >= VRCExpressionsMenu.MAX_CONTROLS;
         }
 
         private bool Precheck(string message, bool ok)
@@ -325,8 +327,9 @@ namespace net.fushizen.avrc
 
         private void InstallMenu()
         {
-            if (_installMenu == null) return;
-            Undo.RecordObject(_installMenu, "AVRC: Add submenu reference");
+            var menu = _installMenu?.objectReferenceValue as VRCExpressionsMenu;
+            if (menu == null) return;
+            Undo.RecordObject(menu, "AVRC: Add submenu reference");
 
             MenuReference menuRef = CreateInstance<MenuReference>();
             var path = AssetDatabase.GetAssetPath(_params);
@@ -356,9 +359,9 @@ namespace net.fushizen.avrc
                 ? _params.sourceExpressionMenu
                 : _params.embeddedExpressionsMenu);
 
-            if (_installMenu.controls.All(c => c.subMenu != rootTargetMenu))
+            if (menu.controls.All(c => c.subMenu != rootTargetMenu))
             {
-                _installMenu.controls.Add(new VRCExpressionsMenu.Control()
+                menu.controls.Add(new VRCExpressionsMenu.Control
                 {
                     name = _params.name,
                     type = VRCExpressionsMenu.Control.ControlType.SubMenu,
@@ -368,7 +371,7 @@ namespace net.fushizen.avrc
 
             FilterControls(rootTargetMenu);
 
-            EditorUtility.SetDirty(_installMenu);
+            EditorUtility.SetDirty(menu);
         }
 
         private void FilterControls(VRCExpressionsMenu rootTargetMenu)
@@ -552,6 +555,8 @@ namespace net.fushizen.avrc
                 _bindingConfig.writeDefaults = AvrcAnimatorUtils.GetWriteDefaultsState(_targetAvatar);
 
             InitBindingList();
+
+            _installMenu = _bindingConfigSO.FindProperty(nameof(AvrcBindingConfiguration.installTargetMenu));
         }
 
         private void InitBindingList()
