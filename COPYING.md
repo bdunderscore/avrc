@@ -2,7 +2,7 @@
 
 `Textures/AVRC_prefs.png` is Copyright 2022 Arishima_ and bd_, licensed under the CC BY-NC International 4.0 license.
 
-All other files are Copyright 2021-2022 bd_, and licensed under the MIT license.
+All other files (except for the demo video referenced in the README) are Copyright 2021-2022 bd_, and licensed under the MIT license.
 
 == MIT License ==
 
