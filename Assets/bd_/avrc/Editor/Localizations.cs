@@ -127,6 +127,8 @@ namespace net.fushizen.avrc
             INST_ERR_NO_EXP_PARAMS = "Expression parametersがアバターで設定されていません。",
             INST_ERR_SYNCED_SECRET_PARAM = "シークレットパラメーター「{0}」の同期設定をExpression Parametersから外してください。",
             INST_MENU_FULL = "選択されたメニューは満杯です",
+            TEST_NO_AV3EMU = "このコンポーネントにはLyuma's Avatar 3.0 Emulatorが必要です",
+            TEST_OLD_AV3EMU = "Lyuma's Avatar 3.0 emulatorが古すぎます！（バージョン2.9.8以上が必要です）"
         };
 
         private static Localizations Current = null;
@@ -185,6 +187,11 @@ namespace net.fushizen.avrc
                 return Current;
             }
         }
+
+        public string TEST_NO_AV3EMU { get; private set; } = "This component requires Lyuma's Avatar 3.0 Emulator.";
+
+        public string TEST_OLD_AV3EMU { get; private set; } =
+            "Lyuma's Avatar 3.0 emulator is too old! (must be version 2.9.8 or higher)";
 
         internal static void SetLanguage(Language lang)
         {
