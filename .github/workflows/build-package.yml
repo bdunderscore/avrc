@@ -11,6 +11,7 @@ jobs:
           echo "Assets/bd_.meta" >> metaList
           echo "Assets/bd_/avrc.meta" >> metaList
           find Assets/bd_/avrc -name '*.meta' >> metaList
+          mv COPYING.md Assets/bd_/avrc/COPYING.txt
       - run: mkdir output
       - uses: pCYSl5EDgo/create-unitypackage@master
         with:
