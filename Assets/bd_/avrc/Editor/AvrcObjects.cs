@@ -49,7 +49,7 @@ namespace net.fushizen.avrc
         {
             _linkSpec = linkSpec;
             _names = names;
-            _signalEncoding = new SignalEncoding(linkSpec, role, names.LayerPrefix);
+            _signalEncoding = new SignalEncoding(linkSpec, role, names.ParamPrefix);
             _role = role;
             _pos = new Vector3();
         }
