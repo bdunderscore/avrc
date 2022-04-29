@@ -681,7 +681,7 @@ namespace net.fushizen.avrc
             SyncNames();
 
             EditorGUILayout.Separator();
-            EditorGUILayout.LabelField(L.INST_SIGNAL_SETTINGS);
+            EditorGUILayout.LabelField(L.INST_PARAM_SETTINGS);
 
             // Compute label width
             _labelWidth = new GUIStyle(GUI.skin.label).CalcSize(new GUIContent("Placeholder")).x;

@@ -101,7 +101,7 @@ namespace net.fushizen.avrc
 
             // Installer
             INST_TITLE = new GUIContent("AVRC Installer"),
-            INST_PARAMS = new GUIContent("パラメータアセット"),
+            INST_PARAMS = new GUIContent("リンクスペックアセット"),
             INST_AVATAR = new GUIContent("対象アバター", "インストールするアバター"),
             INST_MENU = new GUIContent("メニュー", "内包メニューをこのメニューに追加します"),
             INST_ROLE = new GUIContent("役割"),
@@ -114,7 +114,7 @@ namespace net.fushizen.avrc
             INST_UNINSTALL = new GUIContent("アンインストール", "このAVRCパラメータをアンインストールします"),
             INST_UNINSTALL_ALL = new GUIContent("全てのAVRCパラメータをアンインストール", "全てのAVRCパラメータをアンインストールします"),
             INST_SECRET_MODE = new GUIContent("シークレットモード", "送信者と受信者以外はこの信号が見れません"),
-            INST_SIGNAL_SETTINGS = new GUIContent("信号設定"),
+            INST_PARAM_SETTINGS = new GUIContent("パラメーター設定"),
             INST_ERR_NO_ROLE = "役割を設定してください",
             INST_ERR_NO_PARAMS = "AVRCパラメータアセットが設定されていません",
             INST_ERR_NO_PREFIX = "プレフィックスが設定されていません",
@@ -268,7 +268,7 @@ namespace net.fushizen.avrc
         #region Installer
 
         public GUIContent INST_TITLE { get; private set; } = new GUIContent("AVRC Installer");
-        public GUIContent INST_PARAMS { get; private set; } = new GUIContent("Parameters");
+        public GUIContent INST_PARAMS { get; private set; } = new GUIContent("Link Spec");
         public GUIContent INST_AVATAR { get; private set; } = new GUIContent("Target Avatar");
 
         public GUIContent INST_MENU { get; private set; } = new GUIContent(
@@ -296,7 +296,7 @@ namespace net.fushizen.avrc
         public GUIContent INST_SECRET_MODE { get; private set; }
             = new GUIContent("Secret mode", "Only the transmitter and receiver will see this signal");
 
-        public GUIContent INST_SIGNAL_SETTINGS { get; private set; } = new GUIContent("Signal settings");
+        public GUIContent INST_PARAM_SETTINGS { get; private set; } = new GUIContent("Parameter settings");
 
         public string INST_ERR_NO_ROLE { get; private set; } = "Role is not set";
         public string INST_ERR_NO_PARAMS { get; private set; } = "AVRC Parameters must be set";

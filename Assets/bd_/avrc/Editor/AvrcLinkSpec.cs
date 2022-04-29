@@ -32,7 +32,7 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 namespace net.fushizen.avrc
 {
     [Serializable]
-    [CreateAssetMenu(fileName = "AVRCLink", menuName = "bd_/Avatar Remote/Link", order = 51)]
+    [CreateAssetMenu(fileName = "AVRCLink", menuName = "bd_/Avatar Remote Link", order = 51)]
     public class AvrcLinkSpec : ScriptableObject
     {
         [FormerlySerializedAs("avrcParams")] public List<AvrcSignal> signals;
