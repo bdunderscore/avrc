@@ -332,7 +332,7 @@ namespace net.fushizen.avrc
             var newContact = new ContactSpec();
             newContact.Name = name;
             newContact.BasePosition = _nextPosition;
-            newContact.CollisionTags = new List<string>(new[] {_linkSpec.guid + "$" + name});
+            newContact.CollisionTags = new List<string>(new[] {"_AVRCI_" + _linkSpec.guid + "$" + name});
             newContact.IsSender = sendingRole == _myRole;
             newContact.Parameter = $"{_paramPrefix}${name}";
             AllContacts = AllContacts.Add(newContact);
