@@ -1,29 +1,44 @@
 ﻿name: Build release artifacts
 
-on:
-  push:
-    tags:
-      - '*'
+on: push
 
 jobs:
-  build-package:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: |
+      - name: Generate filelists
+        run: |
           echo "Assets/bd_.meta" >> metaList
           echo "Assets/bd_/avrc.meta" >> metaList
           find Assets/bd_/avrc -name '*.meta' >> metaList
-          mv COPYING.md Assets/bd_/avrc/COPYING.txt
-      - run: mkdir output
-      - uses: pCYSl5EDgo/create-unitypackage@master
+      - name: Misc setup
+        run: |
+          cp COPYING.md Assets/bd_/avrc/COPYING.txt
+          mkdir output
+          cp COPYING.md output/COPYING.txt
+      - name: Build unitypackage
+        uses: pCYSl5EDgo/create-unitypackage@2f4ac82dabd3a1029f7a6771f30dc796e4217551
         with:
           package-path: 'output/avrc-dev.unitypackage'
           include-files: metaList
+      - name: Upload commit artifacts (dev .zip package)
+        uses: actions/upload-artifact@master
+        with:
+          path: output
+          name: avrc-dev
       - name: Set version based on tag
         id: version
-        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
-      - name: release
+        if: startsWith(github.event.ref, 'refs/tags/')
+        run: |
+          echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+      - name: Rename and zip artifacts
+        if: startsWith(github.event.ref, 'refs/tags/')
+        run: |
+          mv output/avrc-dev.unitypackage output/avrc-${{ steps.version.outputs.version }}.unitypackage
+          (cd output; zip ../avrc-dev.zip *)
+      - name: Create draft release
+        if: startsWith(github.event.ref, 'refs/tags/')
         uses: actions/create-release@v1
         id: create_release
         with:
@@ -35,11 +50,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Upload unitypackage release artifact
+        if: startsWith(github.event.ref, 'refs/tags/')
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: output/avrc-dev.unitypackage
+          asset_path: output/avrc-${{ steps.version.outputs.version }}.unitypackage
           asset_name: avrc-${{ steps.version.outputs.version }}.unitypackage
           asset_content_type: application/octet-stream
+      - name: Upload zip release artifact
+        if: startsWith(github.event.ref, 'refs/tags/')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: avrc-dev.zip
+          asset_name: avrc-${{ steps.version.outputs.version }}.zip
+          asset_content_type: application/zip
